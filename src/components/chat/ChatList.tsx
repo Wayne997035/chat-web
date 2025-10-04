@@ -104,20 +104,23 @@ const ChatList = ({ onCreateRoom }: ChatListProps) => {
   const handleSelectRoom = useCallback((roomId: string) => {
     const room = rooms.find(r => r.id === roomId);
     if (room) {
-      // 設置當前聊天室（保留未讀數，讓 MessageList 記錄初始位置）
+      // 立即設置當前聊天室（保留未讀數，讓 MessageList 記錄初始位置）
       setCurrentRoom(room);
       
-      // 立即清除列表中的未讀數和發送已讀請求
-      setTimeout(() => {
-        const updatedRoom = { ...room, unread_count: 0 };
-        setCurrentRoom(updatedRoom);
-        
-        setRooms((prevRooms) => 
-          prevRooms.map(r => r.id === roomId ? updatedRoom : r)
-        );
-        
-        chatApi.markAsRead(roomId, currentUser).catch(console.error);
-      }, 300);
+      // 使用 requestAnimationFrame 在下一幀清除未讀數（更快，不阻塞）
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const updatedRoom = { ...room, unread_count: 0 };
+          setCurrentRoom(updatedRoom);
+          
+          setRooms((prevRooms) => 
+            prevRooms.map(r => r.id === roomId ? updatedRoom : r)
+          );
+          
+          // 異步發送已讀請求，不阻塞 UI
+          chatApi.markAsRead(roomId, currentUser).catch(console.error);
+        });
+      });
     }
   }, [rooms, setCurrentRoom, setRooms, currentUser]);
 

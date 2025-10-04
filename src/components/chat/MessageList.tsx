@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import MessageBubble from './MessageBubble';
@@ -27,6 +27,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
   const isLoadingRef = useRef(false);
   const hasScrolledToUnread = useRef(false);
   const initialUnreadIndex = useRef<number>(-1); // 記錄進入聊天室時的未讀位置
+  const [isInitializing, setIsInitializing] = useState(true); // 初始化狀態
 
   // 載入訊息
   const loadMessages = useCallback(async (loadMore = false) => {
@@ -59,8 +60,12 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
   // 初始載入訊息 - 只在 roomId 改變時觸發
   useEffect(() => {
+    // 重置初始化狀態
+    setIsInitializing(true);
+    
     // 臨時聊天室不載入訊息
     if (!roomId || roomId.startsWith('temp_')) {
+      setIsInitializing(false);
       return;
     }
     
@@ -69,6 +74,13 @@ const MessageList = ({ roomId }: MessageListProps) => {
       if (isLoadingRef.current) return;
 
       isLoadingRef.current = true;
+      
+      // 先將容器滾動到底部（隱藏狀態下）
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+      
       try {
         const response = await chatApi.getMessages(roomId, currentUser, 30, '');
 
@@ -89,51 +101,49 @@ const MessageList = ({ roomId }: MessageListProps) => {
             } else {
               initialUnreadIndex.current = totalMessages - unreadCount;
             }
-            console.log('記錄初始未讀位置:', initialUnreadIndex.current, '未讀數:', unreadCount);
           } else {
             initialUnreadIndex.current = -1;
           }
           
-          // 訊息載入後根據未讀狀態決定滾動位置
-          // 使用雙重 RAF 確保 DOM 完全渲染
+          // 訊息載入後根據未讀狀態決定滾動位置（在顯示前完成）
           requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              const container = messagesContainerRef.current;
+            const container = messagesContainerRef.current;
+            
+            if (!container) {
+              setIsInitializing(false);
+              return;
+            }
+            
+            if (initialUnreadIndex.current >= 0) {
+              // 有未讀，滾動到未讀標記（如果存在）
+              const unreadMarker = document.querySelector('.unread-divider');
               
-              if (!container) return;
-              
-              if (initialUnreadIndex.current >= 0) {
-                // 有未讀，滾動到未讀標記（如果存在）
-                const unreadMarker = document.querySelector('.unread-divider');
-                console.log('找到分隔線:', !!unreadMarker);
-                
-                if (unreadMarker) {
-                  const markerTop = (unreadMarker as HTMLElement).offsetTop;
-                  const containerHeight = container.clientHeight;
-                  // 讓分隔線顯示在螢幕中間偏上的位置，確保能看到分隔線和下方的未讀訊息
-                  container.scrollTop = markerTop - (containerHeight * 0.3);
-                  console.log('滾動到未讀分隔線位置:', markerTop - (containerHeight * 0.3));
-                } else {
-                  container.scrollTop = container.scrollHeight;
-                  console.log('找不到分隔線，滾動到底部');
-                }
+              if (unreadMarker) {
+                const markerTop = (unreadMarker as HTMLElement).offsetTop;
+                const containerHeight = container.clientHeight;
+                container.scrollTop = markerTop - (containerHeight * 0.3);
               } else {
-                // 沒有未讀，立即滾動到底部
                 container.scrollTop = container.scrollHeight;
-                console.log('沒有未讀，滾動到底部');
               }
-            });
+            } else {
+              // 沒有未讀，立即滾動到底部
+              container.scrollTop = container.scrollHeight;
+            }
+            
+            // 滾動完成後才顯示
+            setIsInitializing(false);
           });
         }
       } catch (error) {
         console.error('載入訊息失敗:', error);
+        setIsInitializing(false);
       } finally {
         isLoadingRef.current = false;
       }
     };
     
     initialLoad();
-  }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages]);
+  }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages, currentRoom]);
 
   const messages = messageHistory[roomId] || [];
   
@@ -197,7 +207,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
     }
   };
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && !isInitializing) {
     return (
       <div className="messages-container" ref={messagesContainerRef}>
         <div className="empty-messages">還沒有訊息</div>
@@ -210,6 +220,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
       className="messages-container" 
       ref={messagesContainerRef}
       onScroll={handleScroll}
+      style={{ visibility: isInitializing ? 'hidden' : 'visible' }}
     >
       {hasMoreMessages[roomId] && (
         <div className="load-more-indicator">
