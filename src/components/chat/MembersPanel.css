@@ -1,0 +1,115 @@
+.members-panel {
+  width: 280px;
+  background: #ffffff;
+  border-left: 1px solid #e4e6eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.members-panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e6eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.members-panel-header h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #050505;
+}
+
+.btn-close-panel {
+  background: #f0f2f5;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: #65676b;
+  transition: background 0.2s;
+}
+
+.btn-close-panel:hover {
+  background: #e4e6eb;
+}
+
+.members-panel-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.members-panel-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.members-panel-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.members-panel-list::-webkit-scrollbar-thumb {
+  background: #ccd0d5;
+  border-radius: 4px;
+}
+
+.member-panel-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+}
+
+.member-panel-item:hover {
+  background: #f2f3f5;
+}
+
+.member-panel-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.member-panel-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-panel-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #050505;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.you-badge {
+  font-size: 12px;
+  color: #65676b;
+  font-weight: 400;
+}
+
+.member-panel-role {
+  font-size: 13px;
+  color: #0084ff;
+  margin-top: 2px;
+}
+

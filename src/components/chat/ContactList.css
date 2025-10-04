@@ -1,0 +1,83 @@
+.contacts-section {
+  margin-bottom: 8px;
+}
+
+.contacts-section h4 {
+  margin: 0;
+  padding: 12px 20px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #65676b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.contacts-list {
+  margin-bottom: 0;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  margin: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  background: transparent;
+  position: relative;
+}
+
+.contact-item:hover {
+  background: #f2f3f5;
+}
+
+.contact-item.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  /* 背景顏色由 JS 動態設置 */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 20px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.contact-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #31a24c;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-name {
+  font-weight: 500;
+  font-size: 15px;
+  color: #050505;
+  margin-bottom: 2px;
+}
+
+.contact-status {
+  font-size: 13px;
+  color: #65676b;
+}
+
