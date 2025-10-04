@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useState, useRef, type KeyboardEvent, type FormEvent } from 'react';
 import { validateMessage } from '../../utils/validation';
 import { sanitizeInput } from '../../utils/sanitize';
 import './MessageInput.css';
@@ -11,17 +11,48 @@ interface MessageInputProps {
 const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
+  const isSendingRef = useRef(false);
+  const lastSentContentRef = useRef('');
 
-  const handleSend = () => {
-    if (!content.trim()) return;
+  const handleSend = (e?: FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
+    const trimmedContent = content.trim();
+    if (!trimmedContent) return;
+    if (isSendingRef.current) return;
+    
+    // 防止重複送出相同內容
+    if (trimmedContent === lastSentContentRef.current) {
+      return;
+    }
+
+    isSendingRef.current = true;
+    lastSentContentRef.current = trimmedContent;
+    
     try {
-      const sanitized = sanitizeInput(content);
+      const sanitized = sanitizeInput(trimmedContent);
       validateMessage(sanitized);
-      onSend(sanitized);
+      
+      // 立即清空輸入框（同步）
       setContent('');
       setError('');
+      
+      // 呼叫發送（可能是異步）
+      onSend(sanitized);
+      
+      // 短暫延遲後解鎖和重置
+      setTimeout(() => {
+        isSendingRef.current = false;
+        lastSentContentRef.current = '';
+      }, 500);
     } catch (err) {
+      // 錯誤時立即解鎖和重置
+      isSendingRef.current = false;
+      lastSentContentRef.current = '';
+      
       if (err instanceof Error) {
         setError(err.message);
         setTimeout(() => setError(''), 3000);
@@ -32,7 +63,8 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      e.stopPropagation();
+      handleSend(e);
     }
   };
 
