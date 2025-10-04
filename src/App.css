@@ -24,6 +24,22 @@ body {
   overflow: hidden;
 }
 
+/* 手機版響應式設計 */
+@media (max-width: 768px) {
+  body {
+    height: 100vh;
+    height: 100dvh; /* 動態視窗高度，避免被手機瀏覽器工具列擋住 */
+    align-items: stretch;
+  }
+
+  .app-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    max-width: none;
+  }
+}
+
 /* 側邊欄 */
 .sidebar {
   width: 360px;
@@ -39,6 +55,27 @@ body {
   display: flex;
   flex-direction: column;
   background: #f0f2f5;
+}
+
+/* 手機版：側邊欄和聊天區域切換 */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    display: none;
+  }
+
+  .sidebar.mobile-visible {
+    display: flex;
+  }
+
+  .chat-area {
+    width: 100%;
+    display: none;
+  }
+
+  .chat-area.mobile-visible {
+    display: flex;
+  }
 }
 
 /* 空狀態 */

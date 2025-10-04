@@ -29,7 +29,7 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
     }
   };
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -44,7 +44,7 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           placeholder="輸入訊息..."
           disabled={disabled}
         />

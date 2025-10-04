@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import { useSSE } from '../../hooks/useSSE';
@@ -13,8 +13,21 @@ const ChatRoom = () => {
   const { currentUser, currentRoom, addMessage, addRoom, setCurrentRoom } = useChatStore();
   const [showMembers, setShowMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   if (!currentRoom) return null;
+
+  // 檢測手機版
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // 手機版返回按鈕
+  const handleBack = () => {
+    setCurrentRoom(null);
+  };
 
   // SSE 連接（只在非臨時聊天室時啟動）
   useSSE({
@@ -117,6 +130,11 @@ const ChatRoom = () => {
   return (
     <div className="chat-room">
       <div className="chat-header">
+        {isMobile && (
+          <button className="btn-back" onClick={handleBack}>
+            ← 返回
+          </button>
+        )}
         <div>
           <div className="chat-title">
             {getRoomDisplayName()}
