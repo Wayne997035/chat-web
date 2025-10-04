@@ -60,26 +60,40 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
   // 初始載入訊息 - 只在 roomId 改變時觸發
   useEffect(() => {
-    // 重置初始化狀態
-    setIsInitializing(true);
-    
     // 臨時聊天室不載入訊息
     if (!roomId || roomId.startsWith('temp_')) {
       setIsInitializing(false);
       return;
     }
     
-    // 直接在這裡載入，不依賴 loadMessages
+    // 檢查是否已有快取訊息（在 effect 內部讀取，不加入依賴）
+    const messages = messageHistory[roomId];
+    const hasCache = messages && messages.length > 0;
+    
+    // 只在沒有快取時顯示載入狀態
+    if (!hasCache) {
+      setIsInitializing(true);
+    } else {
+      // 如果有快取，立即顯示
+      setIsInitializing(false);
+      
+      // 在背景中滾動到正確位置
+      requestAnimationFrame(() => {
+        const container = messagesContainerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+      
+      // 有快取就不需要載入，直接返回
+      return;
+    }
+    
+    // 直接在這裡載入，不依賴 loadMessages（有快取時在背景執行）
     const initialLoad = async () => {
       if (isLoadingRef.current) return;
 
       isLoadingRef.current = true;
-      
-      // 先將容器滾動到底部（隱藏狀態下）
-      const container = messagesContainerRef.current;
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
       
       try {
         const response = await chatApi.getMessages(roomId, currentUser, 30, '');
@@ -105,7 +119,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
             initialUnreadIndex.current = -1;
           }
           
-          // 訊息載入後根據未讀狀態決定滾動位置（在顯示前完成）
+          // 訊息載入後根據未讀狀態決定滾動位置
           requestAnimationFrame(() => {
             const container = messagesContainerRef.current;
             
@@ -144,6 +158,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
     
     initialLoad();
   }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages, currentRoom]);
+  // 注意：不要把 messageHistory 加入依賴，會造成無限循環
 
   const messages = messageHistory[roomId] || [];
   

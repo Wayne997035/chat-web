@@ -147,10 +147,10 @@ const ChatRoom = () => {
         {currentRoom.type === 'group' && !currentRoom.isTemporary && (
           <div className="chat-actions">
             <button className="btn-action" onClick={() => setShowMembers(!showMembers)}>
-              👥 成員
+              成員
             </button>
             <button className="btn-action" onClick={() => setShowSettings(true)}>
-              ⚙️ 設置
+              設置
             </button>
           </div>
         )}

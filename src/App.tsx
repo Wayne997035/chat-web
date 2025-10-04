@@ -38,7 +38,7 @@ function App() {
           <ChatRoom />
         ) : (
           <div className="empty-state">
-            <div className="empty-icon">💬</div>
+            <div className="empty-icon"></div>
             <div className="empty-title">選擇聊天室開始對話</div>
             <div className="empty-subtitle">
               點擊左側聯絡人開始一對一對話，或創建群組聊天
