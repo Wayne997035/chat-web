@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chatStore';
+import { getDisplayName, getInitials, getAvatarColor } from '../utils/formatters';
 import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { rooms, currentUser } = useChatStore();
+  const { rooms, currentUser, setCurrentRoom } = useChatStore();
 
   // 取得最近的對話
   const recentChats = rooms.slice(0, 5);
@@ -22,7 +23,25 @@ const Home = () => {
   };
 
   const handleViewRoom = (roomId: string) => {
+    // 先設置當前聊天室，確保狀態正確
+    const room = rooms.find(r => r.id === roomId);
+    if (room) {
+      setCurrentRoom(room);
+    }
     navigate(`/messages/${roomId}`);
+  };
+
+  // 獲取聊天室顯示名稱
+  const getRoomDisplayName = (room: any): string => {
+    if (room.type === 'group') {
+      return room.name;
+    } else if (room.type === 'direct' && room.members) {
+      const otherMember = room.members.find((m: any) => m.user_id !== currentUser);
+      if (otherMember) {
+        return getDisplayName(otherMember.user_id);
+      }
+    }
+    return room.name;
   };
 
   return (
@@ -88,26 +107,30 @@ const Home = () => {
             </div>
             
             <div className="recent-chats">
-              {recentChats.map((room) => (
-                <div 
-                  key={room.id} 
-                  className="chat-card"
-                  onClick={() => handleViewRoom(room.id)}
-                >
-                  <div className="chat-avatar">
-                    {room.name.charAt(0).toUpperCase()}
+              {recentChats.map((room) => {
+                const displayName = getRoomDisplayName(room);
+                const avatarColor = getAvatarColor(room.id);
+                return (
+                  <div 
+                    key={room.id} 
+                    className="chat-card"
+                    onClick={() => handleViewRoom(room.id)}
+                  >
+                    <div className="chat-avatar" style={{ backgroundColor: avatarColor }}>
+                      {getInitials(displayName)}
+                    </div>
+                    <div className="chat-info">
+                      <h3 className="chat-name">{displayName}</h3>
+                      <p className="chat-preview">
+                        {room.last_message || '開始對話...'}
+                      </p>
+                    </div>
+                    {(room.unread_count || 0) > 0 && (
+                      <div className="unread-badge">{room.unread_count}</div>
+                    )}
                   </div>
-                  <div className="chat-info">
-                    <h3 className="chat-name">{room.name}</h3>
-                    <p className="chat-preview">
-                      {room.last_message || '開始對話...'}
-                    </p>
-                  </div>
-                  {(room.unread_count || 0) > 0 && (
-                    <div className="unread-badge">{room.unread_count}</div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

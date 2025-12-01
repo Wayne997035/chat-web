@@ -52,10 +52,12 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // 使用 event.isComposing 來判斷是否在使用輸入法
+    // isComposing 為 true 表示正在使用輸入法（如中文、日文等）
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       e.stopPropagation();
-      handleSend(e);
+      handleSend();
     }
   };
 

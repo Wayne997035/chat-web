@@ -65,6 +65,9 @@ export const getDisplayName = (userId: string): string => {
     'user_bob': 'Bob',
     'user_charlie': 'Charlie',
     'user_david': 'David',
+    'user_emma': 'Emma',
+    'user_frank': 'Frank',
+    'user_grace': 'Grace',
   };
   
   // 先查表，找不到再用原始邏輯

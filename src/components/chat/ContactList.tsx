@@ -10,6 +10,9 @@ const users = [
   { id: 'user_bob', name: 'Bob', online: true },
   { id: 'user_charlie', name: 'Charlie', online: false },
   { id: 'user_david', name: 'David', online: false },
+  { id: 'user_emma', name: 'Emma', online: true },
+  { id: 'user_frank', name: 'Frank', online: true },
+  { id: 'user_grace', name: 'Grace', online: false },
 ];
 
 const ContactList = () => {
@@ -17,52 +20,55 @@ const ContactList = () => {
   const { currentUser, setCurrentRoom } = useChatStore();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const handleStartChat = (contactId: string) => {
+  const handleStartChat = async (contactId: string) => {
     if (contactId === currentUser) return;
     
     setLoading(contactId);
     
-    // 檢查是否已經有與此聯絡人的聊天室
-    const { rooms } = useChatStore.getState();
-    const existingRoom = rooms.find(room => 
-      room.type === 'direct' && 
-      room.members && 
-      room.members.some(member => member.user_id === contactId) &&
-      room.members.some(member => member.user_id === currentUser)
-    );
+    try {
+      // 檢查是否已經有與此聯絡人的聊天室
+      const { rooms } = useChatStore.getState();
+      
+      const existingRoom = rooms.find(room => {
+        const isDirect = room.type === 'direct';
+        const hasMembers = room.members && room.members.length > 0;
+        
+        if (!isDirect || !hasMembers) return false;
+        
+        const hasContact = room.members.some(member => member.user_id === contactId);
+        const hasCurrentUser = room.members.some(member => member.user_id === currentUser);
+        
+        return hasContact && hasCurrentUser;
+      });
 
-    if (existingRoom) {
-      // 如果已存在，直接進入聊天室
-      setCurrentRoom(existingRoom);
-      // 確保 state 更新後再導航
-      setTimeout(() => {
+      if (existingRoom) {
+        // 如果已存在，直接進入聊天室
+        setCurrentRoom(existingRoom);
         navigate(`/messages/${existingRoom.id}`);
-        setLoading(null);
-      }, 0);
-      return;
-    }
+        return;
+      }
 
-    // 創建臨時聊天室（不發送到後端）
-    const tempRoom: Room = {
-      id: `temp_${contactId}`,
-      name: `${currentUser}_${contactId}`,
-      type: 'direct',
-      owner_id: currentUser,
-      members: [
-        { user_id: currentUser, role: 'admin' },
-        { user_id: contactId, role: 'member' },
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-      isTemporary: true,
-      targetContactId: contactId,
-    };
+      // 創建臨時聊天室（不發送到後端）
+      const tempRoom: Room = {
+        id: `temp_${contactId}`,
+        name: '', // 名稱會由 getRoomDisplayName 計算
+        type: 'direct',
+        owner_id: currentUser,
+        members: [
+          { user_id: currentUser, role: 'admin' },
+          { user_id: contactId, role: 'member' },
+        ],
+        created_at: Math.floor(Date.now() / 1000),
+        isTemporary: true,
+        targetContactId: contactId,
+      };
 
-    setCurrentRoom(tempRoom);
-    // 確保 state 更新後再導航
-    setTimeout(() => {
+      setCurrentRoom(tempRoom);
       navigate(`/messages/${tempRoom.id}`);
+    } finally {
+      // 確保 loading 狀態被清除
       setLoading(null);
-    }, 0);
+    }
   };
 
   const availableContacts = users.filter(u => u.id !== currentUser);

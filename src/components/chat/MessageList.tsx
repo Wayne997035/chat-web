@@ -66,32 +66,65 @@ const MessageList = ({ roomId }: MessageListProps) => {
       return;
     }
     
-    // 檢查是否已有快取訊息（在 effect 內部讀取，不加入依賴）
-    const messages = messageHistory[roomId];
-    const hasCache = messages && messages.length > 0;
+    // 重要：每次 roomId 改變時，重置載入狀態
+    isLoadingRef.current = false;
     
-    // 只在沒有快取時顯示載入狀態
-    if (!hasCache) {
-      setIsInitializing(true);
-    } else {
-      // 如果有快取，立即顯示
+    // 重置狀態
+    hasScrolledToUnread.current = false;
+    initialUnreadIndex.current = -1;
+    
+    // 檢查是否已有快取訊息
+    const cachedMessages = messageHistory[roomId];
+    const hasCache = cachedMessages && cachedMessages.length > 0;
+    
+    // 如果有快取，立即顯示（不顯示載入畫面）
+    if (hasCache) {
       setIsInitializing(false);
       
-      // 在背景中滾動到正確位置
+      // 計算初始未讀位置（使用快取）
+      const room = currentRoom;
+      if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
+        const unreadCount = room.unread_count;
+        const totalMessages = cachedMessages.length;
+        
+        if (unreadCount >= totalMessages) {
+          initialUnreadIndex.current = 0;
+        } else {
+          initialUnreadIndex.current = totalMessages - unreadCount;
+        }
+      }
+      
+      // 立即滾動到正確位置
       requestAnimationFrame(() => {
         const container = messagesContainerRef.current;
-        if (container) {
+        if (!container) return;
+        
+        if (initialUnreadIndex.current >= 0) {
+          const unreadMarker = unreadMarkerRef.current;
+          if (unreadMarker) {
+            const markerTop = unreadMarker.offsetTop;
+            const targetScroll = Math.max(0, markerTop - 250);
+            container.scrollTop = targetScroll;
+            hasScrolledToUnread.current = true;
+          } else {
+            container.scrollTop = container.scrollHeight;
+          }
+        } else {
           container.scrollTop = container.scrollHeight;
         }
       });
-      
-      // 有快取就不需要載入，直接返回
-      return;
+    } else {
+      // 沒有快取，顯示載入狀態
+      setIsInitializing(true);
     }
     
-    // 直接在這裡載入，不依賴 loadMessages（有快取時在背景執行）
+    // 無論有沒有快取，都在背景載入最新訊息
     const initialLoad = async () => {
-      if (isLoadingRef.current) return;
+      // 如果已經在載入中，等待一下再檢查
+      if (isLoadingRef.current) {
+        console.log('MessageList: 已經在載入中，跳過');
+        return;
+      }
 
       isLoadingRef.current = true;
       
@@ -104,53 +137,53 @@ const MessageList = ({ roomId }: MessageListProps) => {
           setMessagesCursor(roomId, response.next_cursor || '');
           setHasMoreMessages(roomId, response.has_more || false);
           
-          // 計算並記錄初始未讀位置（只在進入聊天室時計算一次）
-          const room = currentRoom;
-          
-          if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
-            const unreadCount = room.unread_count;
-            const totalMessages = messages.length;
+          // 如果之前沒有快取，現在需要計算未讀位置並滾動
+          if (!hasCache) {
+            // 計算並記錄初始未讀位置
+            const room = currentRoom;
             
-            if (unreadCount >= totalMessages) {
-              initialUnreadIndex.current = 0;
-            } else {
-              initialUnreadIndex.current = totalMessages - unreadCount;
-            }
-          } else {
-            initialUnreadIndex.current = -1;
-          }
-          
-          // 訊息載入後根據未讀狀態決定滾動位置
-          // 使用多重延遲確保 DOM 完全渲染
-          setTimeout(() => {
-            const container = messagesContainerRef.current;
-            
-            if (!container) {
-              setIsInitializing(false);
-              return;
-            }
-            
-            if (initialUnreadIndex.current >= 0) {
-              // 有未讀訊息，滾動到未讀分隔線
-              const unreadMarker = unreadMarkerRef.current;
+            if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
+              const unreadCount = room.unread_count;
+              const totalMessages = messages.length;
               
-              if (unreadMarker) {
-                // 將未讀分隔線放在可視區域上方，確保分隔線和之前的訊息都可見
-                const markerTop = unreadMarker.offsetTop;
-                const targetScroll = Math.max(0, markerTop - 250);
-                container.scrollTop = targetScroll;
-                hasScrolledToUnread.current = true;
+              if (unreadCount >= totalMessages) {
+                initialUnreadIndex.current = 0;
               } else {
-                // 找不到未讀標記，滾動到底部
-                container.scrollTop = container.scrollHeight;
+                initialUnreadIndex.current = totalMessages - unreadCount;
               }
             } else {
-              // 沒有未讀訊息，滾動到底部
-              container.scrollTop = container.scrollHeight;
+              initialUnreadIndex.current = -1;
             }
             
-            setIsInitializing(false);
-          }, 100);
+            // 訊息載入後根據未讀狀態決定滾動位置
+            setTimeout(() => {
+              const container = messagesContainerRef.current;
+              
+              if (!container) {
+                setIsInitializing(false);
+                return;
+              }
+              
+              if (initialUnreadIndex.current >= 0) {
+                // 有未讀訊息，滾動到未讀分隔線
+                const unreadMarker = unreadMarkerRef.current;
+                
+                if (unreadMarker) {
+                  const markerTop = unreadMarker.offsetTop;
+                  const targetScroll = Math.max(0, markerTop - 250);
+                  container.scrollTop = targetScroll;
+                  hasScrolledToUnread.current = true;
+                } else {
+                  container.scrollTop = container.scrollHeight;
+                }
+              } else {
+                // 沒有未讀訊息，滾動到底部
+                container.scrollTop = container.scrollHeight;
+              }
+              
+              setIsInitializing(false);
+            }, 100);
+          }
         }
       } catch (error) {
         console.error('載入訊息失敗:', error);
@@ -162,7 +195,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
     
     initialLoad();
   }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages, currentRoom]);
-  // 注意：不要把 messageHistory 加入依賴，會造成無限循環
+  // 注意：messageHistory 不加入依賴，避免無限循環
 
   const messages = messageHistory[roomId] || [];
   

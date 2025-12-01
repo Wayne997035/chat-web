@@ -34,6 +34,9 @@ const Sidebar = () => {
     { id: 'user_bob', name: 'Bob', online: true },
     { id: 'user_charlie', name: 'Charlie', online: true },
     { id: 'user_david', name: 'David', online: true },
+    { id: 'user_emma', name: 'Emma', online: true },
+    { id: 'user_frank', name: 'Frank', online: true },
+    { id: 'user_grace', name: 'Grace', online: true },
   ].filter(u => u.id !== currentUser && u.online);
 
   const handleStartChatWithContact = (contactId: string) => {
@@ -50,16 +53,14 @@ const Sidebar = () => {
     if (existingRoom) {
       // 如果已存在，直接進入聊天室
       setCurrentRoom(existingRoom);
-      setTimeout(() => {
-        navigate(`/messages/${existingRoom.id}`);
-      }, 0);
+      navigate(`/messages/${existingRoom.id}`);
       return;
     }
 
     // 創建臨時聊天室（不發送到後端）
     const tempRoom: Room = {
       id: `temp_${contactId}`,
-      name: `${currentUser}_${contactId}`,
+      name: '', // 名稱會由 getRoomDisplayName 計算
       type: 'direct',
       owner_id: currentUser,
       members: [
@@ -72,9 +73,8 @@ const Sidebar = () => {
     };
 
     setCurrentRoom(tempRoom);
-    setTimeout(() => {
-      navigate(`/messages/${tempRoom.id}`);
-    }, 0);
+    // 通過 state 傳遞臨時聊天室數據，確保 ChatRoomPage 能立即獲取
+    navigate(`/messages/${tempRoom.id}`, { state: { tempRoom } });
   };
 
   const isActive = (path: string, exact = false) => {
@@ -130,7 +130,7 @@ const Sidebar = () => {
               <button
                 key={action.action}
                 className="quick-action-card"
-                onClick={() => console.log(action.action)}
+                onClick={() => {/* TODO: 實作快速操作功能 */}}
               >
                 <div className="quick-action-icon">{action.icon}</div>
                 <span className="quick-action-label">{action.label}</span>

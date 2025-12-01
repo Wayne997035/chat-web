@@ -67,13 +67,15 @@
 }
 
 .message.other .message-content {
-  background: var(--hover-color);
-  color: var(--text-primary);
+  background: #e0e7ff;
+  color: #1e293b;
   border-bottom-left-radius: 4px;
 }
 
 .dark .message.other .message-content {
-  background: var(--bg-tertiary);
+  background: #3b4d6b;
+  color: #e2e8f0;
+  border: none;
 }
 
 .message-info {

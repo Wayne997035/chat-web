@@ -11,6 +11,9 @@ const users = [
   { id: 'user_bob', name: 'Bob' },
   { id: 'user_charlie', name: 'Charlie' },
   { id: 'user_david', name: 'David' },
+  { id: 'user_emma', name: 'Emma' },
+  { id: 'user_frank', name: 'Frank' },
+  { id: 'user_grace', name: 'Grace' },
 ];
 
 const MembersPanel = ({ onClose }: MembersPanelProps) => {
