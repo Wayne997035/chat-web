@@ -36,7 +36,7 @@ const Sidebar = () => {
     { id: 'user_david', name: 'David', online: true },
   ].filter(u => u.id !== currentUser && u.online);
 
-  const handleStartChatWithContact = (contactId: string, contactName: string) => {
+  const handleStartChatWithContact = (contactId: string) => {
     if (contactId === currentUser) return;
     
     // 檢查是否已經有與此聯絡人的聊天室
@@ -155,7 +155,7 @@ const Sidebar = () => {
                   <div
                     key={contact.id}
                     className="online-contact-item-sidebar"
-                    onClick={() => handleStartChatWithContact(contact.id, contact.name)}
+                    onClick={() => handleStartChatWithContact(contact.id)}
                   >
                     <div 
                       className="contact-avatar-small online"

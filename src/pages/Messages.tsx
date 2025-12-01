@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChatList from '../components/chat/ChatList';
 import CreateRoomModal from '../components/chat/CreateRoomModal';
-import { useChatStore } from '../store/chatStore';
 import './Messages.css';
 
 const Messages = () => {

@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chatStore';
-import { getInitials, getAvatarColor } from '../utils/formatters';
-import type { Room } from '../types';
 import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { rooms, currentUser, setCurrentRoom } = useChatStore();
+  const { rooms, currentUser } = useChatStore();
 
   // 取得最近的對話
   const recentChats = rooms.slice(0, 5);
@@ -19,61 +17,12 @@ const Home = () => {
   // 計算有未讀消息的聊天室數量
   const unreadRoomsCount = rooms.filter(room => (room.unread_count || 0) > 0).length;
 
-  // 在線聯絡人列表 - 顯示所有在線用戶
-  const onlineUsers = [
-    { id: 'user_alice', name: 'Alice', online: true },
-    { id: 'user_bob', name: 'Bob', online: true },
-    { id: 'user_charlie', name: 'Charlie', online: true },
-    { id: 'user_david', name: 'David', online: true },
-  ].filter(u => u.id !== currentUser && u.online);
-
   const handleStartChat = () => {
     navigate('/messages');
   };
 
   const handleViewRoom = (roomId: string) => {
     navigate(`/messages/${roomId}`);
-  };
-
-  const handleStartChatWithContact = (contactId: string, contactName: string) => {
-    if (contactId === currentUser) return;
-    
-    // 檢查是否已經有與此聯絡人的聊天室
-    const existingRoom = rooms.find(room => 
-      room.type === 'direct' && 
-      room.members && 
-      room.members.some(member => member.user_id === contactId) &&
-      room.members.some(member => member.user_id === currentUser)
-    );
-
-    if (existingRoom) {
-      // 如果已存在，直接進入聊天室
-      setCurrentRoom(existingRoom);
-      setTimeout(() => {
-        navigate(`/messages/${existingRoom.id}`);
-      }, 0);
-      return;
-    }
-
-    // 創建臨時聊天室（不發送到後端）
-    const tempRoom: Room = {
-      id: `temp_${contactId}`,
-      name: `${currentUser}_${contactId}`,
-      type: 'direct',
-      owner_id: currentUser,
-      members: [
-        { user_id: currentUser, role: 'admin' },
-        { user_id: contactId, role: 'member' },
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-      isTemporary: true,
-      targetContactId: contactId,
-    };
-
-    setCurrentRoom(tempRoom);
-    setTimeout(() => {
-      navigate(`/messages/${tempRoom.id}`);
-    }, 0);
   };
 
   return (
@@ -154,7 +103,7 @@ const Home = () => {
                       {room.last_message || '開始對話...'}
                     </p>
                   </div>
-                  {room.unread_count > 0 && (
+                  {(room.unread_count || 0) > 0 && (
                     <div className="unread-badge">{room.unread_count}</div>
                   )}
                 </div>

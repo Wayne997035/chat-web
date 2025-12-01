@@ -10,7 +10,7 @@ interface ChatListProps {
   onSelectRoom?: (roomId: string) => void;
 }
 
-const ChatList = ({ onCreateRoom, onSelectRoom }: ChatListProps) => {
+const ChatList = ({ onSelectRoom }: ChatListProps) => {
   const { currentUser, rooms, setRooms, setCurrentRoom } = useChatStore();
   const [isLoading, setIsLoading] = useState(false);
   const [cursor, setCursor] = useState('');

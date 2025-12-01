@@ -9,7 +9,7 @@ import './Layout.css';
 
 const Layout = () => {
   const location = useLocation();
-  const { currentUser, rooms, setRooms } = useChatStore();
+  const { currentUser, setRooms } = useChatStore();
   const loadingRef = useRef(false);
   const hasInitialLoadRef = useRef(false);
 
@@ -58,7 +58,7 @@ const Layout = () => {
               // 合併：如果前端的未讀數是 0，保持為 0（用戶剛標記為已讀）
               return newRooms.map(newRoom => {
                 const prevRoom = prevRooms.find(r => r.id === newRoom.id);
-                if (prevRoom && prevRoom.unread_count === 0 && newRoom.unread_count > 0) {
+                if (prevRoom && prevRoom.unread_count === 0 && (newRoom.unread_count || 0) > 0) {
                   // 前端已清除，保持為 0
                   return { ...newRoom, unread_count: 0 };
                 }
