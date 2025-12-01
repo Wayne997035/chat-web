@@ -1,0 +1,191 @@
+import { useNavigate } from 'react-router-dom';
+import { useChatStore } from '../store/chatStore';
+import { getInitials, getAvatarColor } from '../utils/formatters';
+import type { Room } from '../types';
+import './Home.css';
+
+const Home = () => {
+  const navigate = useNavigate();
+  const { rooms, currentUser, setCurrentRoom } = useChatStore();
+
+  // 取得最近的對話
+  const recentChats = rooms.slice(0, 5);
+
+  // 計算未讀消息總數
+  const totalUnread = rooms.reduce((total, room) => {
+    return total + (room.unread_count || 0);
+  }, 0);
+
+  // 計算有未讀消息的聊天室數量
+  const unreadRoomsCount = rooms.filter(room => (room.unread_count || 0) > 0).length;
+
+  // 在線聯絡人列表 - 顯示所有在線用戶
+  const onlineUsers = [
+    { id: 'user_alice', name: 'Alice', online: true },
+    { id: 'user_bob', name: 'Bob', online: true },
+    { id: 'user_charlie', name: 'Charlie', online: true },
+    { id: 'user_david', name: 'David', online: true },
+  ].filter(u => u.id !== currentUser && u.online);
+
+  const handleStartChat = () => {
+    navigate('/messages');
+  };
+
+  const handleViewRoom = (roomId: string) => {
+    navigate(`/messages/${roomId}`);
+  };
+
+  const handleStartChatWithContact = (contactId: string, contactName: string) => {
+    if (contactId === currentUser) return;
+    
+    // 檢查是否已經有與此聯絡人的聊天室
+    const existingRoom = rooms.find(room => 
+      room.type === 'direct' && 
+      room.members && 
+      room.members.some(member => member.user_id === contactId) &&
+      room.members.some(member => member.user_id === currentUser)
+    );
+
+    if (existingRoom) {
+      // 如果已存在，直接進入聊天室
+      setCurrentRoom(existingRoom);
+      setTimeout(() => {
+        navigate(`/messages/${existingRoom.id}`);
+      }, 0);
+      return;
+    }
+
+    // 創建臨時聊天室（不發送到後端）
+    const tempRoom: Room = {
+      id: `temp_${contactId}`,
+      name: `${currentUser}_${contactId}`,
+      type: 'direct',
+      owner_id: currentUser,
+      members: [
+        { user_id: currentUser, role: 'admin' },
+        { user_id: contactId, role: 'member' },
+      ],
+      created_at: Math.floor(Date.now() / 1000),
+      isTemporary: true,
+      targetContactId: contactId,
+    };
+
+    setCurrentRoom(tempRoom);
+    setTimeout(() => {
+      navigate(`/messages/${tempRoom.id}`);
+    }, 0);
+  };
+
+  return (
+    <div className="home-page">
+      <div className="home-container">
+        <div className="welcome-section">
+          <h1 className="welcome-title">歡迎回來，{currentUser}</h1>
+          <p className="welcome-subtitle">開始與朋友、家人和同事保持聯繫</p>
+          
+          {/* 未讀通知統計 */}
+          {totalUnread > 0 && (
+            <div className="notification-summary">
+              <div className="notification-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.37 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.64 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z" fill="currentColor"/>
+                </svg>
+                {totalUnread > 0 && <span className="notification-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>}
+              </div>
+              <div className="notification-text">
+                <strong>你有 {totalUnread} 則未讀訊息</strong>
+                <span>來自 {unreadRoomsCount} 個對話</span>
+              </div>
+              <button className="notification-btn" onClick={handleStartChat}>
+                查看
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="quick-actions">
+          <button className="action-card primary" onClick={handleStartChat}>
+            <div className="action-icon">+</div>
+            <div className="action-content">
+              <h3>開始新對話</h3>
+              <p>與聯絡人開始一對一或群組聊天</p>
+            </div>
+          </button>
+          
+          <button className="action-card" onClick={() => navigate('/contacts')}>
+            <div className="action-icon">@</div>
+            <div className="action-content">
+              <h3>聯絡人</h3>
+              <p>查看和管理你的聯絡人</p>
+            </div>
+          </button>
+          
+          <button className="action-card" onClick={() => navigate('/groups')}>
+            <div className="action-icon">#</div>
+            <div className="action-content">
+              <h3>我的群組</h3>
+              <p>查看所有群組對話</p>
+            </div>
+          </button>
+        </div>
+
+        {recentChats.length > 0 && (
+          <div className="recent-section">
+            <div className="section-header">
+              <h2>最近對話</h2>
+              <button className="link-button" onClick={handleStartChat}>
+                查看全部
+              </button>
+            </div>
+            
+            <div className="recent-chats">
+              {recentChats.map((room) => (
+                <div 
+                  key={room.id} 
+                  className="chat-card"
+                  onClick={() => handleViewRoom(room.id)}
+                >
+                  <div className="chat-avatar">
+                    {room.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <h3 className="chat-name">{room.name}</h3>
+                    <p className="chat-preview">
+                      {room.last_message || '開始對話...'}
+                    </p>
+                  </div>
+                  {room.unread_count > 0 && (
+                    <div className="unread-badge">{room.unread_count}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="features-section">
+          <h2>功能特色</h2>
+          <div className="features-grid">
+            <div className="feature-item">
+              <div className="feature-icon">即時</div>
+              <h3>即時通訊</h3>
+              <p>訊息即時送達，不錯過任何重要訊息</p>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">群組</div>
+              <h3>群組聊天</h3>
+              <p>建立群組，與多人同時對話</p>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">安全</div>
+              <h3>安全可靠</h3>
+              <p>訊息加密傳輸，保護你的隱私</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Home;

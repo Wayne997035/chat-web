@@ -1,0 +1,147 @@
+.messages-page {
+  width: 100%;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+.messages-container {
+  height: 100%;
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.dark .messages-container {
+  background: var(--bg-tertiary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 左側聊天列表 */
+.messages-sidebar-wrapper {
+  width: 360px;
+  height: 100%;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.messages-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btn-new-message {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--hover-color);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: background-color 0.2s;
+  color: var(--text-primary);
+}
+
+.btn-new-message:hover {
+  background-color: var(--border-color);
+}
+
+/* 右側內容區 */
+.messages-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
+.messages-empty {
+  text-align: center;
+  padding: 40px;
+  max-width: 400px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.btn-start-chat {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-start-chat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.3);
+}
+
+.redirect-notice {
+  font-size: 16px;
+  color: #65676b;
+}
+
+/* 手機版響應式 */
+@media (max-width: 768px) {
+  .messages-page {
+    border-radius: 0;
+  }
+
+  .messages-container {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .messages-sidebar-wrapper {
+    width: 100%;
+  }
+
+  .messages-content {
+    display: none;
+  }
+}
+

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import { useSSE } from '../../hooks/useSSE';
@@ -10,6 +11,7 @@ import { getDisplayName } from '../../utils/formatters';
 import './ChatRoom.css';
 
 const ChatRoom = () => {
+  const navigate = useNavigate();
   const { currentUser, currentRoom, addMessage, addRoom, setCurrentRoom } = useChatStore();
   const [showMembers, setShowMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -98,6 +100,9 @@ const ChatRoom = () => {
         const newRoom = { ...createResponse.data };
         addRoom(newRoom);
         setCurrentRoom(newRoom);
+        
+        // 重要：更新 URL 為真實的聊天室 ID
+        navigate(`/messages/${roomId}`, { replace: true });
       }
 
       // 發送訊息

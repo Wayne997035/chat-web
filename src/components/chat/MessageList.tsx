@@ -106,6 +106,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
           
           // 計算並記錄初始未讀位置（只在進入聊天室時計算一次）
           const room = currentRoom;
+          
           if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
             const unreadCount = room.unread_count;
             const totalMessages = messages.length;
@@ -120,7 +121,8 @@ const MessageList = ({ roomId }: MessageListProps) => {
           }
           
           // 訊息載入後根據未讀狀態決定滾動位置
-          requestAnimationFrame(() => {
+          // 使用多重延遲確保 DOM 完全渲染
+          setTimeout(() => {
             const container = messagesContainerRef.current;
             
             if (!container) {
@@ -129,24 +131,26 @@ const MessageList = ({ roomId }: MessageListProps) => {
             }
             
             if (initialUnreadIndex.current >= 0) {
-              // 有未讀，滾動到未讀標記（如果存在）
-              const unreadMarker = document.querySelector('.unread-divider');
+              // 有未讀訊息，滾動到未讀分隔線
+              const unreadMarker = unreadMarkerRef.current;
               
               if (unreadMarker) {
-                const markerTop = (unreadMarker as HTMLElement).offsetTop;
-                const containerHeight = container.clientHeight;
-                container.scrollTop = markerTop - (containerHeight * 0.3);
+                // 將未讀分隔線放在可視區域上方，確保分隔線和之前的訊息都可見
+                const markerTop = unreadMarker.offsetTop;
+                const targetScroll = Math.max(0, markerTop - 250);
+                container.scrollTop = targetScroll;
+                hasScrolledToUnread.current = true;
               } else {
+                // 找不到未讀標記，滾動到底部
                 container.scrollTop = container.scrollHeight;
               }
             } else {
-              // 沒有未讀，立即滾動到底部
+              // 沒有未讀訊息，滾動到底部
               container.scrollTop = container.scrollHeight;
             }
             
-            // 滾動完成後才顯示
             setIsInitializing(false);
-          });
+          }, 100);
         }
       } catch (error) {
         console.error('載入訊息失敗:', error);
@@ -164,14 +168,6 @@ const MessageList = ({ roomId }: MessageListProps) => {
   
   // 使用固定的初始未讀位置，不會因為 unread_count 清除而改變
   const firstUnreadIndex = initialUnreadIndex.current;
-
-  // 滾動邏輯已經移到 initialLoad 裡面處理
-
-  // 當 roomId 改變時，重置滾動狀態和未讀位置
-  useEffect(() => {
-    hasScrolledToUnread.current = false;
-    initialUnreadIndex.current = -1; // 離開聊天室時重置
-  }, [roomId]);
 
   // 滾動載入更多
   const handleScroll = useCallback(() => {

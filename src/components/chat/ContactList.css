@@ -52,7 +52,8 @@
   position: relative;
 }
 
-.contact-avatar::after {
+/* 只有在線時才顯示綠點 */
+.contact-avatar.online::after {
   content: '';
   position: absolute;
   bottom: 2px;

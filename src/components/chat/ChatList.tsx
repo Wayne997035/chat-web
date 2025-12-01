@@ -3,14 +3,14 @@ import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import type { Room } from '../../types';
 import RoomItem from './RoomItem';
-import ContactList from './ContactList';
 import './ChatList.css';
 
 interface ChatListProps {
   onCreateRoom: () => void;
+  onSelectRoom?: (roomId: string) => void;
 }
 
-const ChatList = ({ onCreateRoom }: ChatListProps) => {
+const ChatList = ({ onCreateRoom, onSelectRoom }: ChatListProps) => {
   const { currentUser, rooms, setRooms, setCurrentRoom } = useChatStore();
   const [isLoading, setIsLoading] = useState(false);
   const [cursor, setCursor] = useState('');
@@ -102,6 +102,13 @@ const ChatList = ({ onCreateRoom }: ChatListProps) => {
 
   // 選擇聊天室
   const handleSelectRoom = useCallback((roomId: string) => {
+    // 如果有傳入 onSelectRoom 回調，就使用它（用於導航）
+    if (onSelectRoom) {
+      onSelectRoom(roomId);
+      return;
+    }
+
+    // 否則使用原本的邏輯（用於直接設置當前聊天室）
     const room = rooms.find(r => r.id === roomId);
     if (room) {
       // 立即設置當前聊天室（保留未讀數，讓 MessageList 記錄初始位置）
@@ -122,7 +129,7 @@ const ChatList = ({ onCreateRoom }: ChatListProps) => {
         });
       });
     }
-  }, [rooms, setCurrentRoom, setRooms, currentUser]);
+  }, [onSelectRoom, rooms, setCurrentRoom, setRooms, currentUser]);
 
   // 排序聊天室（使用 useMemo 優化）
   const sortedRooms = useMemo(() => {
@@ -135,38 +142,25 @@ const ChatList = ({ onCreateRoom }: ChatListProps) => {
 
   return (
     <div className="chat-list-container">
-      <div className="sidebar-content">
-        <ContactList />
-        
-        <div className="rooms-section">
-          <h4>聊天室</h4>
-        <div 
-          className="room-list" 
-          ref={listRef}
-          onScroll={throttledScroll}
-        >
-            {sortedRooms.length === 0 && !isLoading ? (
-              <div className="empty-list">點擊聯絡人開始對話</div>
-            ) : (
-              sortedRooms.map(room => (
-                <RoomItem
-                  key={room.id}
-                  room={room}
-                  onClick={() => handleSelectRoom(room.id)}
-                />
-              ))
-            )}
-            {isLoading && (
-              <div className="loading-indicator">載入中...</div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <div className="create-room-section">
-        <button className="create-room-btn" onClick={onCreateRoom}>
-          + 創建群組
-        </button>
+      <div 
+        className="room-list" 
+        ref={listRef}
+        onScroll={throttledScroll}
+      >
+        {sortedRooms.length === 0 && !isLoading ? (
+          <div className="empty-list">暫無聊天室</div>
+        ) : (
+          sortedRooms.map(room => (
+            <RoomItem
+              key={room.id}
+              room={room}
+              onClick={() => handleSelectRoom(room.id)}
+            />
+          ))
+        )}
+        {isLoading && (
+          <div className="loading-indicator">載入中...</div>
+        )}
       </div>
     </div>
   );

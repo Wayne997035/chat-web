@@ -20,7 +20,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #0084ff;
+  background: var(--primary-color);
   color: white;
   display: flex;
   align-items: center;
@@ -31,11 +31,15 @@
 }
 
 .message.own .message-avatar {
-  background: #0084ff;
+  background: var(--primary-color);
 }
 
 .message.other .message-avatar {
   background: #8b8b8b;
+}
+
+.dark .message.other .message-avatar {
+  background: #6b7280;
 }
 
 .message-wrapper {
@@ -57,20 +61,24 @@
 }
 
 .message.own .message-content {
-  background: #0084ff;
+  background: var(--primary-color);
   color: white;
   border-bottom-right-radius: 4px;
 }
 
 .message.other .message-content {
-  background: #f0f0f0;
-  color: #050505;
+  background: var(--hover-color);
+  color: var(--text-primary);
   border-bottom-left-radius: 4px;
+}
+
+.dark .message.other .message-content {
+  background: var(--bg-tertiary);
 }
 
 .message-info {
   font-size: 11px;
-  color: #65676b;
+  color: var(--text-secondary);
   display: flex;
   gap: 6px;
   align-items: center;
@@ -82,7 +90,7 @@
 }
 
 .message.other .message-info {
-  color: #65676b;
+  color: var(--text-secondary);
   font-size: 11px;
 }
 
@@ -99,10 +107,14 @@
 }
 
 .message.system .message-content {
-  background: #f0f2f5;
-  color: #65676b;
+  background: var(--hover-color);
+  color: var(--text-secondary);
   font-size: 13px;
   padding: 6px 12px;
   border-radius: 16px;
   text-align: center;
+}
+
+.dark .message.system .message-content {
+  background: var(--bg-tertiary);
 }

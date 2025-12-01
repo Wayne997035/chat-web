@@ -12,7 +12,6 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const isSendingRef = useRef(false);
-  const lastSentContentRef = useRef('');
 
   const handleSend = (e?: FormEvent) => {
     if (e) {
@@ -23,35 +22,27 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
     const trimmedContent = content.trim();
     if (!trimmedContent) return;
     if (isSendingRef.current) return;
-    
-    // 防止重複送出相同內容
-    if (trimmedContent === lastSentContentRef.current) {
-      return;
-    }
 
     isSendingRef.current = true;
-    lastSentContentRef.current = trimmedContent;
     
     try {
       const sanitized = sanitizeInput(trimmedContent);
       validateMessage(sanitized);
       
-      // 立即清空輸入框（同步）
+      // 立即清空輸入框
       setContent('');
       setError('');
       
-      // 呼叫發送（可能是異步）
+      // 呼叫發送
       onSend(sanitized);
       
-      // 短暫延遲後解鎖和重置
+      // 短暫延遲後解鎖
       setTimeout(() => {
         isSendingRef.current = false;
-        lastSentContentRef.current = '';
-      }, 500);
+      }, 300);
     } catch (err) {
-      // 錯誤時立即解鎖和重置
+      // 錯誤時立即解鎖
       isSendingRef.current = false;
-      lastSentContentRef.current = '';
       
       if (err instanceof Error) {
         setError(err.message);
