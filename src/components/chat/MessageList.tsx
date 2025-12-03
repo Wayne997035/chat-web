@@ -55,8 +55,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
   // 初始載入訊息 - 核心邏輯
   useEffect(() => {
-    // 檢測 roomId 是否改變
-    const roomChanged = prevRoomIdRef.current !== roomId;
+    // 更新 prevRoomIdRef
     prevRoomIdRef.current = roomId;
 
     // 臨時聊天室不載入訊息
