@@ -19,6 +19,13 @@ interface ChatState {
   currentRoom: Room | null;
   setCurrentRoom: (room: Room | null) => void;
 
+  // 彈跳聊天視窗（像 Facebook Messenger）
+  openPopups: Room[];
+  openChatPopup: (room: Room) => void;
+  closeChatPopup: (roomId: string) => void;
+  minimizeChatPopup: (roomId: string, minimized: boolean) => void;
+  minimizedPopups: Record<string, boolean>;
+
   // 訊息歷史 (按房間 ID 分組)
   messageHistory: Record<string, Message[]>;
   setMessages: (roomId: string, messages: Message[]) => void;
@@ -46,6 +53,8 @@ export const useChatStore = create<ChatState>((set) => ({
   messageHistory: {},
   messagesCursor: {},
   hasMoreMessages: {},
+  openPopups: [],
+  minimizedPopups: {},
 
   // Actions
   setCurrentUser: (userId) => set({ currentUser: userId, isAuthenticated: true }),
@@ -62,7 +71,9 @@ export const useChatStore = create<ChatState>((set) => ({
       currentRoom: null,
       messageHistory: {},
       messagesCursor: {},
-      hasMoreMessages: {}
+      hasMoreMessages: {},
+      openPopups: [],
+      minimizedPopups: {}
     });
   },
 
@@ -81,6 +92,30 @@ export const useChatStore = create<ChatState>((set) => ({
   })),
 
   setCurrentRoom: (room) => set({ currentRoom: room }),
+
+  // 彈跳視窗管理
+  openChatPopup: (room) => set((state) => {
+    // 如果已經打開，不要重複添加，只需要取消最小化
+    if (state.openPopups.some(r => r.id === room.id)) {
+      return {
+        minimizedPopups: { ...state.minimizedPopups, [room.id]: false }
+      };
+    }
+    // 最多同時打開 3 個聊天視窗
+    const newPopups = state.openPopups.length >= 3 
+      ? [...state.openPopups.slice(1), room]
+      : [...state.openPopups, room];
+    return { openPopups: newPopups };
+  }),
+
+  closeChatPopup: (roomId) => set((state) => ({
+    openPopups: state.openPopups.filter(r => r.id !== roomId),
+    minimizedPopups: { ...state.minimizedPopups, [roomId]: false }
+  })),
+
+  minimizeChatPopup: (roomId, minimized) => set((state) => ({
+    minimizedPopups: { ...state.minimizedPopups, [roomId]: minimized }
+  })),
 
   setMessages: (roomId, messages) => set((state) => ({
     messageHistory: {
@@ -133,6 +168,8 @@ export const useChatStore = create<ChatState>((set) => ({
     messageHistory: {},
     messagesCursor: {},
     hasMoreMessages: {},
+    openPopups: [],
+    minimizedPopups: {},
   }),
 }));
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { getInitials, getAvatarColor } from '../../utils/formatters';
 import type { Room } from '../../types';
@@ -16,11 +15,10 @@ const users = [
 ];
 
 const ContactList = () => {
-  const navigate = useNavigate();
-  const { currentUser, setCurrentRoom } = useChatStore();
+  const { currentUser, openChatPopup } = useChatStore();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const handleStartChat = async (contactId: string) => {
+  const handleStartChat = (contactId: string) => {
     if (contactId === currentUser) return;
     
     setLoading(contactId);
@@ -30,21 +28,36 @@ const ContactList = () => {
       const { rooms } = useChatStore.getState();
       
       const existingRoom = rooms.find(room => {
-        const isDirect = room.type === 'direct';
-        const hasMembers = room.members && room.members.length > 0;
+        if (room.type !== 'direct') return false;
         
-        if (!isDirect || !hasMembers) return false;
+        // 方法1: 通過 members 匹配
+        if (room.members && room.members.length > 0) {
+          const hasContact = room.members.some(m => m.user_id === contactId);
+          const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
+          if (hasContact && hasCurrentUser) return true;
+        }
         
-        const hasContact = room.members.some(member => member.user_id === contactId);
-        const hasCurrentUser = room.members.some(member => member.user_id === currentUser);
+        // 方法2: 通過 room.name 匹配（格式：user_alice_user_charlie）
+        if (room.name) {
+          const nameIncludesContact = room.name.includes(contactId);
+          const nameIncludesCurrentUser = room.name.includes(currentUser);
+          if (nameIncludesContact && nameIncludesCurrentUser) return true;
+        }
         
-        return hasContact && hasCurrentUser;
+        return false;
       });
 
       if (existingRoom) {
-        // 如果已存在，直接進入聊天室
-        setCurrentRoom(existingRoom);
-        navigate(`/messages/${existingRoom.id}`);
+        // 如果已存在，直接打開彈跳視窗
+        // 確保 members 字段存在（用於顯示名稱）
+        const roomWithMembers: Room = {
+          ...existingRoom,
+          members: existingRoom.members || [
+            { user_id: currentUser, role: 'admin' },
+            { user_id: contactId, role: 'member' },
+          ],
+        };
+        openChatPopup(roomWithMembers);
         return;
       }
 
@@ -63,8 +76,8 @@ const ContactList = () => {
         targetContactId: contactId,
       };
 
-      setCurrentRoom(tempRoom);
-      navigate(`/messages/${tempRoom.id}`);
+      // 打開彈跳視窗
+      openChatPopup(tempRoom);
     } finally {
       // 確保 loading 狀態被清除
       setLoading(null);

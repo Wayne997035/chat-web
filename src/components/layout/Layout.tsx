@@ -5,11 +5,12 @@ import { chatApi } from '../../api/chat';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import ChatPopup from '../chat/ChatPopup';
 import './Layout.css';
 
 const Layout = () => {
   const location = useLocation();
-  const { currentUser, setRooms } = useChatStore();
+  const { currentUser, setRooms, openPopups } = useChatStore();
   const loadingRef = useRef(false);
   const hasInitialLoadRef = useRef(false);
 
@@ -87,6 +88,11 @@ const Layout = () => {
         </main>
       </div>
       <BottomNav />
+      
+      {/* 彈跳聊天視窗 - 像 Facebook Messenger */}
+      {openPopups.map((room, index) => (
+        <ChatPopup key={room.id} room={room} index={index} />
+      ))}
     </div>
   );
 };

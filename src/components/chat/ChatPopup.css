@@ -1,0 +1,291 @@
+/* Chat Popup - Facebook Messenger 風格彈跳視窗 */
+
+/* ===== 基本結構（淺色模式）===== */
+.chat-popup {
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 328px;
+  height: 455px;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  transition: height 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+  border: none;
+  background: #ffffff;
+}
+
+.chat-popup.minimized {
+  height: 48px;
+  cursor: pointer;
+}
+
+.chat-popup.minimized:hover {
+  background: #f3f4f6;
+}
+
+/* ===== Header ===== */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  color: white;
+  min-height: 48px;
+  border-radius: 12px 12px 0 0;
+}
+
+.popup-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.popup-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.popup-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.popup-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popup-status {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.popup-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background 0.15s ease;
+}
+
+.popup-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.popup-close:hover {
+  background: rgba(255, 100, 100, 0.5);
+}
+
+/* ===== Messages area（淺色模式）===== */
+.popup-messages {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #ffffff;
+}
+
+.popup-messages .messages-container {
+  height: 100%;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.popup-messages .message-list {
+  padding: 0;
+}
+
+.popup-messages .loading-messages,
+.popup-messages .empty-messages {
+  padding: 20px;
+  font-size: 13px;
+  text-align: center;
+  color: #64748b;
+}
+
+/* 調整訊息氣泡在彈窗中的大小 */
+.popup-messages .message-content {
+  max-width: 220px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.popup-messages .message-time {
+  font-size: 10px;
+}
+
+/* ===== Input area（淺色模式）===== */
+.popup-input {
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.popup-input .message-input-container {
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.popup-input .message-textarea {
+  font-size: 13px;
+  min-height: 36px;
+  max-height: 100px;
+}
+
+.popup-input .btn-send {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+/* 隱藏一些不需要的元素 */
+.popup-input .input-tools {
+  display: none;
+}
+
+/* ===== 淺色模式下的日期分隔線 ===== */
+.popup-messages .date-divider::before,
+.popup-messages .date-divider::after {
+  background: #e5e7eb;
+}
+
+.popup-messages .date-divider span {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* ===== 響應式 ===== */
+@media (max-width: 768px) {
+  .chat-popup {
+    display: none;
+  }
+}
+
+/* ===== 錯誤訊息樣式 ===== */
+.popup-messages .error-messages {
+  padding: 20px;
+  text-align: center;
+}
+
+.popup-messages .error-messages .error-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.popup-messages .error-messages .error-text {
+  font-size: 13px;
+  margin-bottom: 12px;
+  color: #64748b;
+}
+
+.popup-messages .error-messages .retry-btn {
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.popup-messages .error-messages .retry-btn:hover {
+  opacity: 0.9;
+}
+
+/* ===========================================
+   深色模式 - 使用 .dark class（在 body 上）
+   =========================================== */
+
+.dark .chat-popup {
+  background: #242526;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.dark .chat-popup.minimized:hover {
+  background: #3a3b3c;
+}
+
+.dark .popup-header {
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+}
+
+.dark .popup-messages {
+  background: #242526;
+}
+
+.dark .popup-messages .messages-container {
+  background: #242526;
+}
+
+.dark .popup-messages .loading-messages,
+.dark .popup-messages .empty-messages {
+  color: #b0b3b8;
+}
+
+.dark .popup-input {
+  border-top: 1px solid #3a3b3c;
+  background: #242526;
+}
+
+.dark .popup-messages .date-divider::before,
+.dark .popup-messages .date-divider::after {
+  background: #3a3b3c;
+}
+
+.dark .popup-messages .date-divider span {
+  background: #3a3b3c;
+  color: #b0b3b8;
+}
+
+.dark .popup-messages .error-messages .error-text {
+  color: #94a3b8;
+}
+
+/* 深色模式滾動條 */
+.dark .popup-messages .messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dark .popup-messages .messages-container::-webkit-scrollbar-track {
+  background: #242526;
+}
+
+.dark .popup-messages .messages-container::-webkit-scrollbar-thumb {
+  background: #4a4b4c;
+  border-radius: 3px;
+}
+
+.dark .popup-messages .messages-container::-webkit-scrollbar-thumb:hover {
+  background: #5a5b5c;
+}

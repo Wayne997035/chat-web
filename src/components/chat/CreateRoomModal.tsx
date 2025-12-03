@@ -20,7 +20,7 @@ const users = [
 ];
 
 const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
-  const { currentUser, addRoom, setCurrentRoom } = useChatStore();
+  const { currentUser, addRoom, openChatPopup } = useChatStore();
   const [roomName, setRoomName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -73,9 +73,9 @@ const CreateRoomModal = ({ onClose }: CreateRoomModalProps) => {
       });
 
       if (response.success && response.data) {
-        // 添加新聊天室並選中
+        // 添加新聊天室並打開彈跳視窗
         addRoom(response.data);
-        setCurrentRoom(response.data);
+        openChatPopup(response.data);
         onClose();
       }
     } catch (error) {

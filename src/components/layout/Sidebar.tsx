@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { getInitials, getAvatarColor } from '../../utils/formatters';
 import type { Room } from '../../types';
@@ -6,8 +6,7 @@ import './Sidebar.css';
 
 const Sidebar = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { currentUser, rooms, setCurrentRoom } = useChatStore();
+  const { currentUser, rooms, openChatPopup } = useChatStore();
 
   const getUserAvatar = () => {
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
@@ -43,17 +42,39 @@ const Sidebar = () => {
     if (contactId === currentUser) return;
     
     // 檢查是否已經有與此聯絡人的聊天室
-    const existingRoom = rooms.find(room => 
-      room.type === 'direct' && 
-      room.members && 
-      room.members.some(member => member.user_id === contactId) &&
-      room.members.some(member => member.user_id === currentUser)
-    );
+    // 方法1: 檢查 members 字段
+    // 方法2: 檢查 room.name（格式如 user_alice_user_charlie）
+    const existingRoom = rooms.find(room => {
+      if (room.type !== 'direct') return false;
+      
+      // 方法1: 通過 members 匹配
+      if (room.members && room.members.length > 0) {
+        const hasContact = room.members.some(m => m.user_id === contactId);
+        const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
+        if (hasContact && hasCurrentUser) return true;
+      }
+      
+      // 方法2: 通過 room.name 匹配（格式：user_alice_user_charlie）
+      if (room.name) {
+        const nameIncludesContact = room.name.includes(contactId);
+        const nameIncludesCurrentUser = room.name.includes(currentUser);
+        if (nameIncludesContact && nameIncludesCurrentUser) return true;
+      }
+      
+      return false;
+    });
 
     if (existingRoom) {
-      // 如果已存在，直接進入聊天室
-      setCurrentRoom(existingRoom);
-      navigate(`/messages/${existingRoom.id}`);
+      // 如果已存在，直接打開彈跳視窗
+      // 確保 members 字段存在（用於顯示名稱）
+      const roomWithMembers: Room = {
+        ...existingRoom,
+        members: existingRoom.members || [
+          { user_id: currentUser, role: 'admin' },
+          { user_id: contactId, role: 'member' },
+        ],
+      };
+      openChatPopup(roomWithMembers);
       return;
     }
 
@@ -72,9 +93,8 @@ const Sidebar = () => {
       targetContactId: contactId,
     };
 
-    setCurrentRoom(tempRoom);
-    // 通過 state 傳遞臨時聊天室數據，確保 ChatRoomPage 能立即獲取
-    navigate(`/messages/${tempRoom.id}`, { state: { tempRoom } });
+    // 打開彈跳視窗
+    openChatPopup(tempRoom);
   };
 
   const isActive = (path: string, exact = false) => {

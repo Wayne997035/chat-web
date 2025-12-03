@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import Messages from './pages/Messages';
-import ChatRoomPage from './pages/ChatRoomPage';
 import Contacts from './pages/Contacts';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -28,7 +27,7 @@ function App() {
         }>
           <Route index element={<Home />} />
           <Route path="messages" element={<Messages />} />
-          <Route path="messages/:roomId" element={<ChatRoomPage />} />
+          {/* 移除 messages/:roomId 路由，不在 URL 中暴露聊天室 ID */}
           <Route path="contacts" element={<Contacts />} />
           <Route path="groups" element={<div className="placeholder-page">群組頁面（開發中）</div>} />
           <Route path="starred" element={<div className="placeholder-page">重要訊息（開發中）</div>} />

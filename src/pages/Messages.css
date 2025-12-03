@@ -27,6 +27,20 @@
   flex-direction: column;
 }
 
+/* 全寬模式 - 用於彈跳視窗版本 */
+.messages-sidebar-wrapper.messages-full-width {
+  width: 400px;
+  max-width: 100%;
+}
+
+.messages-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+}
+
 .messages-sidebar {
   height: 100%;
   display: flex;

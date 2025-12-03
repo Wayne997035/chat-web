@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import { useSSE } from '../../hooks/useSSE';
@@ -11,7 +10,6 @@ import { getDisplayName } from '../../utils/formatters';
 import './ChatRoom.css';
 
 const ChatRoom = () => {
-  const navigate = useNavigate();
   const { currentUser, currentRoom, addMessage, addRoom, setCurrentRoom } = useChatStore();
   const [showMembers, setShowMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -136,8 +134,7 @@ const ChatRoom = () => {
         // 更新 currentRoom（這會觸發 ChatRoom 重新渲染）
         setCurrentRoom(actualRoom);
         
-        // 更新 URL
-        navigate(`/messages/${roomId}`, { replace: true });
+        // 不需要更新 URL，保持在 /messages
       }
 
       // 創建臨時訊息對象（樂觀更新）
@@ -196,7 +193,7 @@ const ChatRoom = () => {
       console.error('發送訊息失敗:', error);
       alert('發送訊息失敗，請稍後再試');
     }
-  }, [currentRoom, currentUser, navigate, addRoom, setCurrentRoom, addMessage]);
+  }, [currentRoom, currentUser, addRoom, setCurrentRoom, addMessage]);
 
   const memberCount = currentRoom.members?.length || 0;
 

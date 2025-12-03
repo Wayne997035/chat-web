@@ -5,7 +5,7 @@ import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { rooms, currentUser, setCurrentRoom } = useChatStore();
+  const { rooms, currentUser, openChatPopup } = useChatStore();
 
   // 取得最近的對話
   const recentChats = rooms.slice(0, 5);
@@ -23,12 +23,11 @@ const Home = () => {
   };
 
   const handleViewRoom = (roomId: string) => {
-    // 先設置當前聊天室，確保狀態正確
+    // 設置當前聊天室並打開彈跳視窗
     const room = rooms.find(r => r.id === roomId);
     if (room) {
-      setCurrentRoom(room);
+      openChatPopup(room);
     }
-    navigate(`/messages/${roomId}`);
   };
 
   // 獲取聊天室顯示名稱

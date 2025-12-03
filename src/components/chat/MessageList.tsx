@@ -25,111 +25,84 @@ const MessageList = ({ roomId }: MessageListProps) => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const unreadMarkerRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false);
-  const hasScrolledToUnread = useRef(false);
-  const initialUnreadIndex = useRef<number>(-1); // 記錄進入聊天室時的未讀位置
-  const [isInitializing, setIsInitializing] = useState(true); // 初始化狀態
+  const initialUnreadIndex = useRef<number>(-1);
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error' | 'empty'>('loading');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const prevRoomIdRef = useRef<string | null>(null);
 
-  // 載入訊息
-  const loadMessages = useCallback(async (loadMore = false) => {
+  // 載入更多訊息
+  const loadMoreMessages = useCallback(async () => {
     if (isLoadingRef.current) return;
-    if (loadMore && !hasMoreMessages[roomId]) return;
+    if (!hasMoreMessages[roomId]) return;
 
     isLoadingRef.current = true;
     try {
-      const cursor = loadMore ? (messagesCursor[roomId] || '') : '';
+      const cursor = messagesCursor[roomId] || '';
       const response = await chatApi.getMessages(roomId, currentUser, 30, cursor);
 
       if (response.success && response.data) {
         const messages = [...response.data].reverse();
-        
-        if (loadMore) {
-          prependMessages(roomId, messages);
-        } else {
-          setMessages(roomId, messages);
-        }
-
+        prependMessages(roomId, messages);
         setMessagesCursor(roomId, response.next_cursor || '');
         setHasMoreMessages(roomId, response.has_more || false);
       }
     } catch (error) {
-      console.error('載入訊息失敗:', error);
+      console.error('載入更多訊息失敗:', error);
     } finally {
       isLoadingRef.current = false;
     }
-  }, [roomId, currentUser, messagesCursor, hasMoreMessages, prependMessages, setMessages, setMessagesCursor, setHasMoreMessages]);
+  }, [roomId, currentUser, messagesCursor, hasMoreMessages, prependMessages, setMessagesCursor, setHasMoreMessages]);
 
-  // 初始載入訊息 - 只在 roomId 改變時觸發
+  // 初始載入訊息 - 核心邏輯
   useEffect(() => {
+    // 檢測 roomId 是否改變
+    const roomChanged = prevRoomIdRef.current !== roomId;
+    prevRoomIdRef.current = roomId;
+
     // 臨時聊天室不載入訊息
     if (!roomId || roomId.startsWith('temp_')) {
-      setIsInitializing(false);
+      setStatus('empty');
+      setErrorMsg(null);
+      return;
+    }
+
+    // 重置狀態
+    isLoadingRef.current = false;
+    initialUnreadIndex.current = -1;
+    setErrorMsg(null);
+    
+    // 檢查是否已有快取訊息
+    const { messageHistory: latestHistory } = useChatStore.getState();
+    const cachedMessages = latestHistory[roomId];
+    const hasCache = cachedMessages && cachedMessages.length > 0;
+    
+    if (hasCache) {
+      // 有快取，直接顯示
+      setStatus('loaded');
+      
+      // 滾動到底部
+      setTimeout(() => {
+        const container = messagesContainerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 50);
       return;
     }
     
-    // 重要：每次 roomId 改變時，重置載入狀態
-    isLoadingRef.current = false;
+    // 沒有快取，開始載入
+    setStatus('loading');
     
-    // 重置狀態
-    hasScrolledToUnread.current = false;
-    initialUnreadIndex.current = -1;
-    
-    // 檢查是否已有快取訊息
-    const cachedMessages = messageHistory[roomId];
-    const hasCache = cachedMessages && cachedMessages.length > 0;
-    
-    // 如果有快取，立即顯示（不顯示載入畫面）
-    if (hasCache) {
-      setIsInitializing(false);
-      
-      // 計算初始未讀位置（使用快取）
-      const room = currentRoom;
-      if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
-        const unreadCount = room.unread_count;
-        const totalMessages = cachedMessages.length;
-        
-        if (unreadCount >= totalMessages) {
-          initialUnreadIndex.current = 0;
-        } else {
-          initialUnreadIndex.current = totalMessages - unreadCount;
-        }
-      }
-      
-      // 立即滾動到正確位置
-      requestAnimationFrame(() => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-        
-        if (initialUnreadIndex.current >= 0) {
-          const unreadMarker = unreadMarkerRef.current;
-          if (unreadMarker) {
-            const markerTop = unreadMarker.offsetTop;
-            const targetScroll = Math.max(0, markerTop - 250);
-            container.scrollTop = targetScroll;
-            hasScrolledToUnread.current = true;
-          } else {
-            container.scrollTop = container.scrollHeight;
-          }
-        } else {
-          container.scrollTop = container.scrollHeight;
-        }
-      });
-    } else {
-      // 沒有快取，顯示載入狀態
-      setIsInitializing(true);
-    }
-    
-    // 無論有沒有快取，都在背景載入最新訊息
-    const initialLoad = async () => {
-      // 如果已經在載入中，等待一下再檢查
-      if (isLoadingRef.current) {
-        console.log('MessageList: 已經在載入中，跳過');
-        return;
-      }
-
+    const loadInitialMessages = async () => {
       isLoadingRef.current = true;
       
       try {
         const response = await chatApi.getMessages(roomId, currentUser, 30, '');
+
+        // 確保 roomId 沒有改變
+        if (prevRoomIdRef.current !== roomId) {
+          return;
+        }
 
         if (response.success && response.data) {
           const messages = [...response.data].reverse();
@@ -137,69 +110,40 @@ const MessageList = ({ roomId }: MessageListProps) => {
           setMessagesCursor(roomId, response.next_cursor || '');
           setHasMoreMessages(roomId, response.has_more || false);
           
-          // 如果之前沒有快取，現在需要計算未讀位置並滾動
-          if (!hasCache) {
-            // 計算並記錄初始未讀位置
-            const room = currentRoom;
-            
-            if (room && room.id === roomId && room.unread_count && room.unread_count > 0) {
-              const unreadCount = room.unread_count;
-              const totalMessages = messages.length;
-              
-              if (unreadCount >= totalMessages) {
-                initialUnreadIndex.current = 0;
-              } else {
-                initialUnreadIndex.current = totalMessages - unreadCount;
-              }
-            } else {
-              initialUnreadIndex.current = -1;
-            }
-            
-            // 訊息載入後根據未讀狀態決定滾動位置
-            setTimeout(() => {
-              const container = messagesContainerRef.current;
-              
-              if (!container) {
-                setIsInitializing(false);
-                return;
-              }
-              
-              if (initialUnreadIndex.current >= 0) {
-                // 有未讀訊息，滾動到未讀分隔線
-                const unreadMarker = unreadMarkerRef.current;
-                
-                if (unreadMarker) {
-                  const markerTop = unreadMarker.offsetTop;
-                  const targetScroll = Math.max(0, markerTop - 250);
-                  container.scrollTop = targetScroll;
-                  hasScrolledToUnread.current = true;
-                } else {
-                  container.scrollTop = container.scrollHeight;
-                }
-              } else {
-                // 沒有未讀訊息，滾動到底部
-                container.scrollTop = container.scrollHeight;
-              }
-              
-              setIsInitializing(false);
-            }, 100);
+          if (messages.length === 0) {
+            setStatus('empty');
+          } else {
+            setStatus('loaded');
           }
+          
+          // 滾動到底部
+          setTimeout(() => {
+            const container = messagesContainerRef.current;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          }, 50);
+        } else {
+          setErrorMsg('服務暫時無法使用，請稍後再試');
+          setStatus('error');
         }
-      } catch (error) {
-        console.error('載入訊息失敗:', error);
-        setIsInitializing(false);
+      } catch (err) {
+        // 確保 roomId 沒有改變
+        if (prevRoomIdRef.current !== roomId) {
+          return;
+        }
+        console.error('載入訊息失敗:', err);
+        setErrorMsg('服務暫時無法使用，請稍後再試');
+        setStatus('error');
       } finally {
         isLoadingRef.current = false;
       }
     };
     
-    initialLoad();
-  }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages, currentRoom]);
-  // 注意：messageHistory 不加入依賴，避免無限循環
+    loadInitialMessages();
+  }, [roomId, currentUser, setMessages, setMessagesCursor, setHasMoreMessages]);
 
   const messages = messageHistory[roomId] || [];
-  
-  // 使用固定的初始未讀位置，不會因為 unread_count 清除而改變
   const firstUnreadIndex = initialUnreadIndex.current;
 
   // 滾動載入更多
@@ -209,7 +153,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
     if (element.scrollTop <= 50 && hasMoreMessages[roomId] && !isLoadingRef.current) {
       const previousHeight = element.scrollHeight;
-      loadMessages(true).then(() => {
+      loadMoreMessages().then(() => {
         requestAnimationFrame(() => {
           if (messagesContainerRef.current) {
             const newHeight = messagesContainerRef.current.scrollHeight;
@@ -218,22 +162,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
         });
       });
     }
-  }, [roomId, hasMoreMessages, loadMessages]);
-
-  // 檢查是否需要顯示日期
-  const shouldShowDate = (index: number): string | null => {
-    if (index === 0) return formatDate(messages[0].created_at);
-    
-    const currentDate = new Date(messages[index].created_at * 1000);
-    const previousDate = new Date(messages[index - 1].created_at * 1000);
-    
-    // 跨日才顯示
-    if (currentDate.toDateString() !== previousDate.toDateString()) {
-      return formatDate(messages[index].created_at);
-    }
-    
-    return null;
-  };
+  }, [roomId, hasMoreMessages, loadMoreMessages]);
 
   // 格式化日期
   const formatDate = (timestamp: number): string => {
@@ -251,7 +180,82 @@ const MessageList = ({ roomId }: MessageListProps) => {
     }
   };
 
-  if (messages.length === 0 && !isInitializing) {
+  // 檢查是否需要顯示日期
+  const shouldShowDate = (index: number): string | null => {
+    if (messages.length === 0) return null;
+    if (index === 0) return formatDate(messages[0].created_at);
+    
+    const currentDate = new Date(messages[index].created_at * 1000);
+    const previousDate = new Date(messages[index - 1].created_at * 1000);
+    
+    if (currentDate.toDateString() !== previousDate.toDateString()) {
+      return formatDate(messages[index].created_at);
+    }
+    
+    return null;
+  };
+
+  // 重試載入
+  const handleRetry = () => {
+    setErrorMsg(null);
+    setStatus('loading');
+    
+    const retryLoad = async () => {
+      isLoadingRef.current = true;
+      try {
+        const response = await chatApi.getMessages(roomId, currentUser, 30, '');
+        if (response.success && response.data) {
+          const msgs = [...response.data].reverse();
+          setMessages(roomId, msgs);
+          setMessagesCursor(roomId, response.next_cursor || '');
+          setHasMoreMessages(roomId, response.has_more || false);
+          setStatus(msgs.length === 0 ? 'empty' : 'loaded');
+          setTimeout(() => {
+            const container = messagesContainerRef.current;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          }, 50);
+        } else {
+          setErrorMsg('服務暫時無法使用，請稍後再試');
+          setStatus('error');
+        }
+      } catch {
+        setErrorMsg('服務暫時無法使用，請稍後再試');
+        setStatus('error');
+      } finally {
+        isLoadingRef.current = false;
+      }
+    };
+    retryLoad();
+  };
+
+  // 顯示錯誤訊息
+  if (status === 'error') {
+    return (
+      <div className="messages-container" ref={messagesContainerRef}>
+        <div className="error-messages">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">{errorMsg}</div>
+          <button className="retry-btn" onClick={handleRetry}>
+            重試
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 載入中
+  if (status === 'loading') {
+    return (
+      <div className="messages-container" ref={messagesContainerRef}>
+        <div className="loading-messages">載入中...</div>
+      </div>
+    );
+  }
+
+  // 沒有訊息
+  if (status === 'empty' || messages.length === 0) {
     return (
       <div className="messages-container" ref={messagesContainerRef}>
         <div className="empty-messages">還沒有訊息</div>
@@ -264,7 +268,6 @@ const MessageList = ({ roomId }: MessageListProps) => {
       className="messages-container" 
       ref={messagesContainerRef}
       onScroll={handleScroll}
-      style={{ visibility: isInitializing ? 'hidden' : 'visible' }}
     >
       {hasMoreMessages[roomId] && (
         <div className="load-more-indicator">
@@ -304,4 +307,3 @@ const MessageList = ({ roomId }: MessageListProps) => {
 };
 
 export default MessageList;
-
