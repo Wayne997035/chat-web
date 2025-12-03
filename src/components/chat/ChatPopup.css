@@ -121,6 +121,8 @@
   height: 100%;
   padding: 12px;
   background: #ffffff;
+  overflow-y: auto;
+  overscroll-behavior: contain; /* 防止滾動穿透到背景頁面 */
 }
 
 .popup-messages .message-list {
@@ -288,4 +290,58 @@
 
 .dark .popup-messages .messages-container::-webkit-scrollbar-thumb:hover {
   background: #5a5b5c;
+}
+
+/* ===== 連線錯誤樣式 ===== */
+.connection-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.connection-error .error-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.connection-error .error-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.connection-error .error-desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.connection-error .retry-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.connection-error .retry-btn:hover {
+  opacity: 0.9;
+}
+
+/* 深色模式 */
+.dark .connection-error .error-title {
+  color: #f3f4f6;
+}
+
+.dark .connection-error .error-desc {
+  color: #9ca3af;
 }

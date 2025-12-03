@@ -10,7 +10,7 @@ import './Layout.css';
 
 const Layout = () => {
   const location = useLocation();
-  const { currentUser, setRooms, openPopups } = useChatStore();
+  const { currentUser, setRooms, setRoomsLoaded, openPopups } = useChatStore();
   const loadingRef = useRef(false);
   const hasInitialLoadRef = useRef(false);
 
@@ -24,17 +24,19 @@ const Layout = () => {
         const response = await chatApi.getRooms(currentUser, 50, '');
         if (response.success && response.data) {
           setRooms(response.data);
+          setRoomsLoaded(true); // 標記已載入
           hasInitialLoadRef.current = true;
         }
       } catch (error) {
         console.error('載入聊天室列表失敗:', error);
+        setRoomsLoaded(true); // 即使失敗也標記為已嘗試載入
       } finally {
         loadingRef.current = false;
       }
     };
 
     loadRooms();
-  }, [currentUser, setRooms]);
+  }, [currentUser, setRooms, setRoomsLoaded]);
 
   // 當離開訊息頁面時，刷新一次聊天室列表（獲取最新未讀數）
   useEffect(() => {

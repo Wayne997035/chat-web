@@ -1,6 +1,7 @@
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain; /* 防止滾動穿透 */
   padding: 20px;
   background: var(--bg-primary);
   display: flex;

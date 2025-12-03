@@ -25,6 +25,7 @@ export interface Room {
   unread_count?: number;
   isTemporary?: boolean;
   targetContactId?: string;
+  connectionTimeout?: boolean; // 標記是否連線超時
 }
 
 // 消息類型

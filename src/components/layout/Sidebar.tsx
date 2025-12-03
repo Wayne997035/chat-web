@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { getInitials, getAvatarColor } from '../../utils/formatters';
@@ -6,7 +7,8 @@ import './Sidebar.css';
 
 const Sidebar = () => {
   const location = useLocation();
-  const { currentUser, rooms, openChatPopup } = useChatStore();
+  const { currentUser, rooms, roomsLoaded, openChatPopup } = useChatStore();
+  const [loadingContact, setLoadingContact] = useState<string | null>(null);
 
   const getUserAvatar = () => {
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
@@ -38,13 +40,9 @@ const Sidebar = () => {
     { id: 'user_grace', name: 'Grace', online: true },
   ].filter(u => u.id !== currentUser && u.online);
 
-  const handleStartChatWithContact = (contactId: string) => {
-    if (contactId === currentUser) return;
-    
-    // 檢查是否已經有與此聯絡人的聊天室
-    // 方法1: 檢查 members 字段
-    // 方法2: 檢查 room.name（格式如 user_alice_user_charlie）
-    const existingRoom = rooms.find(room => {
+  // 尋找已存在的聊天室
+  const findExistingRoom = (contactId: string): Room | undefined => {
+    return rooms.find(room => {
       if (room.type !== 'direct') return false;
       
       // 方法1: 通過 members 匹配
@@ -63,38 +61,130 @@ const Sidebar = () => {
       
       return false;
     });
+  };
 
-    if (existingRoom) {
-      // 如果已存在，直接打開彈跳視窗
-      // 確保 members 字段存在（用於顯示名稱）
-      const roomWithMembers: Room = {
-        ...existingRoom,
-        members: existingRoom.members || [
+  const handleStartChatWithContact = async (contactId: string) => {
+    if (contactId === currentUser || loadingContact) return;
+    
+    // 如果 rooms 已經載入完成，直接檢查
+    if (roomsLoaded) {
+      const existingRoom = findExistingRoom(contactId);
+
+      if (existingRoom) {
+        // 確保 members 字段存在
+        const roomWithMembers: Room = {
+          ...existingRoom,
+          members: existingRoom.members || [
+            { user_id: currentUser, role: 'admin' },
+            { user_id: contactId, role: 'member' },
+          ],
+        };
+        openChatPopup(roomWithMembers);
+        return;
+      }
+
+      // rooms 已載入但找不到聊天室，創建臨時聊天室
+      const tempRoom: Room = {
+        id: `temp_${contactId}`,
+        name: '',
+        type: 'direct',
+        owner_id: currentUser,
+        members: [
           { user_id: currentUser, role: 'admin' },
           { user_id: contactId, role: 'member' },
         ],
+        created_at: Math.floor(Date.now() / 1000),
+        isTemporary: true,
+        targetContactId: contactId,
       };
-      openChatPopup(roomWithMembers);
+      openChatPopup(tempRoom);
       return;
     }
 
-    // 創建臨時聊天室（不發送到後端）
-    const tempRoom: Room = {
-      id: `temp_${contactId}`,
-      name: '', // 名稱會由 getRoomDisplayName 計算
-      type: 'direct',
-      owner_id: currentUser,
-      members: [
-        { user_id: currentUser, role: 'admin' },
-        { user_id: contactId, role: 'member' },
-      ],
-      created_at: Math.floor(Date.now() / 1000),
-      isTemporary: true,
-      targetContactId: contactId,
+    // rooms 還沒載入完成，等待最多 5 秒
+    setLoadingContact(contactId);
+    
+    const startTime = Date.now();
+    const maxWaitTime = 5000; // 5 秒
+
+    const checkAndOpen = () => {
+      const { rooms: latestRooms, roomsLoaded: loaded } = useChatStore.getState();
+      
+      // 如果已載入，檢查聊天室
+      if (loaded) {
+        setLoadingContact(null);
+        
+        const existingRoom = latestRooms.find(room => {
+          if (room.type !== 'direct') return false;
+          if (room.members && room.members.length > 0) {
+            const hasContact = room.members.some(m => m.user_id === contactId);
+            const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
+            if (hasContact && hasCurrentUser) return true;
+          }
+          if (room.name) {
+            const nameIncludesContact = room.name.includes(contactId);
+            const nameIncludesCurrentUser = room.name.includes(currentUser);
+            if (nameIncludesContact && nameIncludesCurrentUser) return true;
+          }
+          return false;
+        });
+
+        if (existingRoom) {
+          const roomWithMembers: Room = {
+            ...existingRoom,
+            members: existingRoom.members || [
+              { user_id: currentUser, role: 'admin' },
+              { user_id: contactId, role: 'member' },
+            ],
+          };
+          openChatPopup(roomWithMembers);
+        } else {
+          // 找不到，創建臨時聊天室
+          const tempRoom: Room = {
+            id: `temp_${contactId}`,
+            name: '',
+            type: 'direct',
+            owner_id: currentUser,
+            members: [
+              { user_id: currentUser, role: 'admin' },
+              { user_id: contactId, role: 'member' },
+            ],
+            created_at: Math.floor(Date.now() / 1000),
+            isTemporary: true,
+            targetContactId: contactId,
+          };
+          openChatPopup(tempRoom);
+        }
+        return;
+      }
+
+      // 檢查是否超時
+      if (Date.now() - startTime >= maxWaitTime) {
+        setLoadingContact(null);
+        // 超時，打開臨時聊天室並標記為需要顯示錯誤
+        const tempRoom: Room = {
+          id: `temp_${contactId}`,
+          name: '',
+          type: 'direct',
+          owner_id: currentUser,
+          members: [
+            { user_id: currentUser, role: 'admin' },
+            { user_id: contactId, role: 'member' },
+          ],
+          created_at: Math.floor(Date.now() / 1000),
+          isTemporary: true,
+          targetContactId: contactId,
+          connectionTimeout: true, // 標記為連線超時
+        };
+        openChatPopup(tempRoom);
+        return;
+      }
+
+      // 繼續等待
+      setTimeout(checkAndOpen, 100);
     };
 
-    // 打開彈跳視窗
-    openChatPopup(tempRoom);
+    checkAndOpen();
   };
 
   const isActive = (path: string, exact = false) => {
@@ -171,19 +261,22 @@ const Sidebar = () => {
             <div className="online-contacts-list-sidebar">
               {onlineUsers.map(contact => {
                 const avatarColor = getAvatarColor(contact.id);
+                const isLoading = loadingContact === contact.id;
                 return (
                   <div
                     key={contact.id}
-                    className="online-contact-item-sidebar"
+                    className={`online-contact-item-sidebar ${isLoading ? 'loading' : ''}`}
                     onClick={() => handleStartChatWithContact(contact.id)}
                   >
                     <div 
                       className="contact-avatar-small online"
                       style={{ backgroundColor: avatarColor }}
                     >
-                      {getInitials(contact.name)}
+                      {isLoading ? '...' : getInitials(contact.name)}
                     </div>
-                    <span className="contact-name-small">{contact.name}</span>
+                    <span className="contact-name-small">
+                      {isLoading ? '連線中...' : contact.name}
+                    </span>
                   </div>
                 );
               })}

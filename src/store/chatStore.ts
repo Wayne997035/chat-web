@@ -11,7 +11,9 @@ interface ChatState {
 
   // 聊天室列表
   rooms: Room[];
+  roomsLoaded: boolean; // 標記 rooms 是否已從後端載入
   setRooms: (rooms: Room[] | ((prevRooms: Room[]) => Room[])) => void;
+  setRoomsLoaded: (loaded: boolean) => void;
   addRoom: (room: Room) => void;
   updateRoom: (roomId: string, updates: Partial<Room>) => void;
 
@@ -49,6 +51,7 @@ export const useChatStore = create<ChatState>((set) => ({
   currentUser: '',
   isAuthenticated: false,
   rooms: [],
+  roomsLoaded: false,
   currentRoom: null,
   messageHistory: {},
   messagesCursor: {},
@@ -68,6 +71,7 @@ export const useChatStore = create<ChatState>((set) => ({
       currentUser: '',
       isAuthenticated: false,
       rooms: [],
+      roomsLoaded: false,
       currentRoom: null,
       messageHistory: {},
       messagesCursor: {},
@@ -80,6 +84,8 @@ export const useChatStore = create<ChatState>((set) => ({
   setRooms: (rooms) => set((state) => ({
     rooms: typeof rooms === 'function' ? rooms(state.rooms) : rooms
   })),
+
+  setRoomsLoaded: (loaded) => set({ roomsLoaded: loaded }),
 
   addRoom: (room) => set((state) => ({
     rooms: [...state.rooms, room],
@@ -164,6 +170,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   clearChat: () => set({
     rooms: [],
+    roomsLoaded: false,
     currentRoom: null,
     messageHistory: {},
     messagesCursor: {},

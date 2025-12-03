@@ -76,7 +76,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
     const hasCache = cachedMessages && cachedMessages.length > 0;
     
     if (hasCache) {
-      // 有快取，直接顯示
+      // 有快取，直接顯示（可能是剛創建的聊天室帶有臨時訊息）
       setStatus('loaded');
       
       // 滾動到底部
@@ -86,6 +86,14 @@ const MessageList = ({ roomId }: MessageListProps) => {
           container.scrollTop = container.scrollHeight;
         }
       }, 50);
+      
+      // 如果快取中只有臨時訊息（temp_ 開頭），不需要從後端載入
+      const onlyTempMessages = cachedMessages.every(msg => msg.id.startsWith('temp_'));
+      if (onlyTempMessages) {
+        return;
+      }
+      
+      // 有真實訊息，不需要重新載入
       return;
     }
     
@@ -104,12 +112,27 @@ const MessageList = ({ roomId }: MessageListProps) => {
         }
 
         if (response.success && response.data) {
-          const messages = [...response.data].reverse();
-          setMessages(roomId, messages);
+          const messagesFromServer = [...response.data].reverse();
+          
+          // 獲取當前可能存在的臨時訊息
+          const { messageHistory: currentHistory } = useChatStore.getState();
+          const existingMessages = currentHistory[roomId] || [];
+          const tempMessages = existingMessages.filter(msg => msg.id.startsWith('temp_'));
+          
+          // 合併：後端訊息 + 臨時訊息（如果有的話）
+          const mergedMessages = [...messagesFromServer];
+          tempMessages.forEach(tempMsg => {
+            // 只加入不存在的臨時訊息
+            if (!mergedMessages.some(m => m.content === tempMsg.content && m.sender_id === tempMsg.sender_id)) {
+              mergedMessages.push(tempMsg);
+            }
+          });
+          
+          setMessages(roomId, mergedMessages);
           setMessagesCursor(roomId, response.next_cursor || '');
           setHasMoreMessages(roomId, response.has_more || false);
           
-          if (messages.length === 0) {
+          if (mergedMessages.length === 0) {
             setStatus('empty');
           } else {
             setStatus('loaded');

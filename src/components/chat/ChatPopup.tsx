@@ -27,6 +27,8 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
   // 使用 ref 來追蹤實際的 roomId（處理臨時房間轉真實房間的情況）
   const actualRoomIdRef = useRef(room.id);
   const [actualRoom, setActualRoom] = useState<Room>(room);
+  const [connectionError, setConnectionError] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
   const isMinimized = minimizedPopups[room.id] || false;
   
   // 當臨時房間轉換成真實房間時更新
@@ -38,54 +40,68 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
   // 監聽 rooms 變化 - 當後端數據載入後，自動更新臨時房間為真實房間
   useEffect(() => {
     // 只有當目前是臨時房間時才需要檢查
-    if (!room.id.startsWith('temp_') || rooms.length === 0) {
+    if (!room.id.startsWith('temp_')) {
+      setConnectionError(false);
       return;
     }
 
-    // 從臨時房間 ID 獲取聯絡人 ID（格式：temp_user_xxx）
-    const contactId = room.targetContactId || room.id.replace('temp_', '');
+    // 如果 rooms 有數據，嘗試匹配
+    if (rooms.length > 0) {
+      // 從臨時房間 ID 獲取聯絡人 ID（格式：temp_user_xxx）
+      const contactId = room.targetContactId || room.id.replace('temp_', '');
 
-    // 在 rooms 中尋找匹配的真實聊天室
-    const matchingRoom = rooms.find(r => {
-      if (r.type !== 'direct') return false;
-      
-      // 方法1: 通過 members 匹配
-      if (r.members && r.members.length > 0) {
-        const hasContact = r.members.some(m => m.user_id === contactId);
-        const hasCurrentUser = r.members.some(m => m.user_id === currentUser);
-        if (hasContact && hasCurrentUser) return true;
-      }
-      
-      // 方法2: 通過 room.name 匹配
-      if (r.name) {
-        const nameIncludesContact = r.name.includes(contactId);
-        const nameIncludesCurrentUser = r.name.includes(currentUser);
-        if (nameIncludesContact && nameIncludesCurrentUser) return true;
-      }
-      
-      return false;
-    });
-
-    if (matchingRoom) {
-      // 找到真實房間，更新 popup
-      const roomWithMembers: Room = {
-        ...matchingRoom,
-        members: matchingRoom.members || [
-          { user_id: currentUser, role: 'admin' },
-          { user_id: contactId, role: 'member' },
-        ],
-      };
-      
-      actualRoomIdRef.current = matchingRoom.id;
-      setActualRoom(roomWithMembers);
-      
-      // 更新 openPopups 中的 room
-      const { openPopups: currentPopups } = useChatStore.getState();
-      useChatStore.setState({
-        openPopups: currentPopups.map(r => r.id === room.id ? roomWithMembers : r)
+      // 在 rooms 中尋找匹配的真實聊天室
+      const matchingRoom = rooms.find(r => {
+        if (r.type !== 'direct') return false;
+        
+        // 方法1: 通過 members 匹配
+        if (r.members && r.members.length > 0) {
+          const hasContact = r.members.some(m => m.user_id === contactId);
+          const hasCurrentUser = r.members.some(m => m.user_id === currentUser);
+          if (hasContact && hasCurrentUser) return true;
+        }
+        
+        // 方法2: 通過 room.name 匹配
+        if (r.name) {
+          const nameIncludesContact = r.name.includes(contactId);
+          const nameIncludesCurrentUser = r.name.includes(currentUser);
+          if (nameIncludesContact && nameIncludesCurrentUser) return true;
+        }
+        
+        return false;
       });
+
+      if (matchingRoom) {
+        // 找到真實房間，更新 popup
+        const contactId = room.targetContactId || room.id.replace('temp_', '');
+        const roomWithMembers: Room = {
+          ...matchingRoom,
+          members: matchingRoom.members || [
+            { user_id: currentUser, role: 'admin' },
+            { user_id: contactId, role: 'member' },
+          ],
+        };
+        
+        actualRoomIdRef.current = matchingRoom.id;
+        setActualRoom(roomWithMembers);
+        setConnectionError(false);
+        
+        // 更新 openPopups 中的 room
+        const { openPopups: currentPopups } = useChatStore.getState();
+        useChatStore.setState({
+          openPopups: currentPopups.map(r => r.id === room.id ? roomWithMembers : r)
+        });
+        return;
+      }
     }
   }, [rooms, room.id, room.targetContactId, currentUser]);
+
+  // 如果 room 標記為連線超時，直接顯示錯誤
+  useEffect(() => {
+    if (room.connectionTimeout) {
+      setConnectionError(true);
+    }
+  }, [room.connectionTimeout]);
 
   // 使用 room prop 或 actualRoom（處理臨時轉真實的情況）
   const currentRoom = actualRoom.id.startsWith('temp_') ? room : actualRoom;
@@ -181,8 +197,21 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
         
         addRoom(newRoom);
         
+        // 不要在這裡清空訊息，讓 MessageList 自己處理
+        // 直接先把臨時訊息加入（使用新的 roomId）
+        const tempMessage = {
+          id: `temp_${Date.now()}`,
+          room_id: roomId,
+          sender_id: currentUser,
+          content: content,
+          type: 'text' as const,
+          created_at: Math.floor(Date.now() / 1000),
+          read_by: [currentUser],
+        };
+        
+        // 先設置訊息（包含臨時訊息）
         const { setMessages: initMessages } = useChatStore.getState();
-        initMessages(roomId, []);
+        initMessages(roomId, [tempMessage]);
         
         // 更新本地狀態
         actualRoomIdRef.current = roomId;
@@ -193,6 +222,40 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
         useChatStore.setState({
           openPopups: currentPopups.map(r => r.id === room.id ? newRoom : r)
         });
+
+        // 發送訊息到後端
+        const sendResponse = await chatApi.sendMessage({
+          room_id: roomId,
+          sender_id: currentUser,
+          content,
+          type: 'text',
+        });
+
+        if (sendResponse.success && sendResponse.data) {
+          const { messageHistory, setMessages } = useChatStore.getState();
+          const messages = messageHistory[roomId] || [];
+          
+          const withoutTemp = messages.filter(msg => msg.id !== tempMessage.id);
+          const realMessageExists = withoutTemp.some(msg => msg.id === sendResponse.data!.id);
+          
+          const updatedMessages = realMessageExists 
+            ? withoutTemp 
+            : [...withoutTemp, sendResponse.data];
+          
+          setMessages(roomId, updatedMessages);
+        }
+        
+        // 滾動到底部
+        requestAnimationFrame(() => {
+          if (popupRef.current) {
+            const container = popupRef.current.querySelector('.messages-container');
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          }
+        });
+        
+        return; // 新房間的訊息處理完成，直接返回
       }
 
       // 創建臨時訊息對象（樂觀更新）
@@ -210,9 +273,11 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
       
       // 立即滾動到底部
       requestAnimationFrame(() => {
-        const container = document.querySelector('.popup-messages .messages-container');
-        if (container) {
-          container.scrollTop = container.scrollHeight;
+        if (popupRef.current) {
+          const container = popupRef.current.querySelector('.messages-container');
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
         }
       });
 
@@ -253,6 +318,7 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
 
   return (
     <div 
+      ref={popupRef}
       className={`chat-popup ${isMinimized ? 'minimized' : ''}`}
       style={{ right: `${20 + index * 340}px` }}
     >
@@ -297,10 +363,32 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
       {!isMinimized && (
         <>
           <div className="popup-messages">
-            <MessageList roomId={roomIdForMessages} />
+            {connectionError ? (
+              <div className="connection-error">
+                <div className="error-icon">⚠️</div>
+                <div className="error-title">無法連接伺服器</div>
+                <div className="error-desc">服務暫時無法使用，請稍後再試</div>
+                <button 
+                  className="retry-btn"
+                  onClick={() => {
+                    setConnectionError(false);
+                    // 重新觸發 timeout
+                    setTimeout(() => {
+                      if (actualRoomIdRef.current.startsWith('temp_')) {
+                        setConnectionError(true);
+                      }
+                    }, 5000);
+                  }}
+                >
+                  重試
+                </button>
+              </div>
+            ) : (
+              <MessageList roomId={roomIdForMessages} />
+            )}
           </div>
           <div className="popup-input">
-            <MessageInput onSend={handleSendMessage} />
+            <MessageInput onSend={handleSendMessage} disabled={connectionError} />
           </div>
         </>
       )}
