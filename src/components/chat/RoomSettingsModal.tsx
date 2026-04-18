@@ -62,7 +62,7 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
       } else {
         setError('添加成員失敗');
       }
-    } catch (err) {
+    } catch {
       setError('添加成員失敗，請稍後再試');
     } finally {
       setLoading(false);
@@ -96,7 +96,7 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
       } else {
         setError('移除成員失敗');
       }
-    } catch (err) {
+    } catch {
       setError('移除成員失敗，請稍後再試');
     } finally {
       setLoading(false);
@@ -124,7 +124,7 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
       } else {
         setError('退出群組失敗');
       }
-    } catch (err) {
+    } catch {
       setError('退出群組失敗，請稍後再試');
     } finally {
       setLoading(false);

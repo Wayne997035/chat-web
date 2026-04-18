@@ -31,11 +31,11 @@ const Home = () => {
   };
 
   // 獲取聊天室顯示名稱
-  const getRoomDisplayName = (room: any): string => {
+  const getRoomDisplayName = (room: { type: string; name: string; members?: { user_id: string }[] }): string => {
     if (room.type === 'group') {
       return room.name;
     } else if (room.type === 'direct' && room.members) {
-      const otherMember = room.members.find((m: any) => m.user_id !== currentUser);
+      const otherMember = room.members.find((m) => m.user_id !== currentUser);
       if (otherMember) {
         return getDisplayName(otherMember.user_id);
       }

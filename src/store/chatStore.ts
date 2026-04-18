@@ -65,8 +65,8 @@ export const useChatStore = create<ChatState>((set) => ({
   setIsAuthenticated: (isAuth) => set({ isAuthenticated: isAuth }),
   
   logout: () => {
-    localStorage.removeItem('chatapp_user');
-    localStorage.removeItem('chatapp_token');
+    sessionStorage.removeItem('chatapp_user');
+    sessionStorage.removeItem('chatapp_token');
     set({
       currentUser: '',
       isAuthenticated: false,

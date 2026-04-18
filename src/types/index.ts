@@ -25,7 +25,7 @@ export interface Room {
   unread_count?: number;
   isTemporary?: boolean;
   targetContactId?: string;
-  connectionTimeout?: boolean; // 標記是否連線超時
+  connectionTimeout?: boolean;
 }
 
 // 消息類型
@@ -41,7 +41,7 @@ export interface Message {
 }
 
 // API 回應類型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -53,6 +53,5 @@ export interface ApiResponse<T = any> {
 // SSE 事件類型
 export interface SSEMessage {
   type: 'connected' | 'ping' | 'message' | 'error';
-  data?: any;
+  data?: unknown;
 }
-

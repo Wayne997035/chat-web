@@ -11,9 +11,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 檢查 localStorage 中是否有登入資訊
-    const user = localStorage.getItem('chatapp_user');
-    const token = localStorage.getItem('chatapp_token');
+    // 檢查 sessionStorage 中是否有登入資訊
+    const user = sessionStorage.getItem('chatapp_user');
+    const token = sessionStorage.getItem('chatapp_token');
 
     if (user && token) {
       setCurrentUser(user);
