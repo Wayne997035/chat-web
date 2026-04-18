@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { getInitials, getAvatarColor } from '../../utils/formatters';
+import { Avatar } from '../ui/Avatar';
 import type { Room } from '../../types';
 
 const Sidebar = () => {
@@ -9,6 +10,12 @@ const Sidebar = () => {
   const { currentUser, rooms, roomsLoaded, openChatPopup } = useChatStore();
   const [loadingContact, setLoadingContact] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   const menuItems = [
     { path: '/messages', label: '所有對話' },
@@ -18,6 +25,7 @@ const Sidebar = () => {
     { path: '/archived', label: '封存對話' },
   ];
 
+  // TODO: replace with real presence API
   const onlineUsers = [
     { id: 'user_alice', name: 'Alice', online: true },
     { id: 'user_bob', name: 'Bob', online: true },
@@ -89,6 +97,7 @@ const Sidebar = () => {
     const maxWaitTime = 5000;
 
     const checkAndOpen = () => {
+      if (!isMountedRef.current) return;
       const { rooms: latestRooms, roomsLoaded: loaded } = useChatStore.getState();
 
       if (loaded) {
@@ -310,14 +319,18 @@ const Sidebar = () => {
         border-t border-white/10
         flex items-center
       ">
-        <button className="
-          w-full flex items-center gap-2 px-3 py-2 rounded-xl
-          text-white/55 hover:text-white hover:bg-white/8
-          text-sm font-medium
-          transition-colors duration-150
-          focus-visible:outline-none focus-visible:ring-2
-          focus-visible:ring-white/50 focus-visible:ring-inset
-        ">
+        <button
+          aria-label="新增對話"
+          onClick={() => { /* TODO: open new conversation flow */ }}
+          className="
+            w-full flex items-center gap-2 px-3 py-2 rounded-xl
+            text-white/55 hover:text-white hover:bg-white/8
+            text-sm font-medium
+            transition-colors duration-150
+            focus-visible:outline-none focus-visible:ring-2
+            focus-visible:ring-white/50 focus-visible:ring-inset
+          "
+        >
           <span className="text-base">+</span>
           新增對話
         </button>
@@ -330,19 +343,14 @@ const Sidebar = () => {
           flex items-center gap-3 px-4 py-3 flex-none
           border-t border-white/10
           transition-colors duration-150
-          focus-visible:outline-none
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-inset
           ${isActive('/profile')
             ? 'bg-primary-600'
             : 'hover:bg-white/8'
           }
         `}
       >
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-none"
-          style={{ backgroundColor: '#4488FF' }}
-        >
-          {currentUser.charAt(0).toUpperCase()}
-        </div>
+        <Avatar name={currentUser} size="sm" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white truncate">{currentUser}</p>
           <p className="text-xs text-success-400">在線上</p>

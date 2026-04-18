@@ -68,6 +68,7 @@ export function Avatar({
         />
       ) : (
         <div
+          role="img"
           className={`
             ${sizeClasses[size]} ${bgColor}
             rounded-full flex items-center justify-center

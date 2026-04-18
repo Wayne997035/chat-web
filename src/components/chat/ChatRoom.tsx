@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
+// TODO: migrate to features/chat/hooks/useSSE.ts when ChatRoom is refactored to TanStack Query
 import { useSSE } from '../../hooks/useSSE';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -65,11 +66,14 @@ const SettingsIcon = () => (
 
 const ChatRoom = () => {
   const { currentUser, currentRoom, addMessage, addRoom, setCurrentRoom } = useChatStore();
+  const messageHistory = useChatStore((s) => s.messageHistory);
+  const setMessages = useChatStore((s) => s.setMessages);
   const [showMembers, setShowMembers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    setIsMobile(window.innerWidth <= 768);
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -161,8 +165,7 @@ const ChatRoom = () => {
 
           addRoom(actualRoom);
 
-          const { setMessages: initMessages } = useChatStore.getState();
-          initMessages(roomId, []);
+          setMessages(roomId, []);
 
           setCurrentRoom(actualRoom);
         }
@@ -194,7 +197,6 @@ const ChatRoom = () => {
         });
 
         if (response.success && response.data) {
-          const { messageHistory, setMessages } = useChatStore.getState();
           const messages = messageHistory[roomId] || [];
 
           const withoutTemp = messages.filter((msg) => msg.id !== tempMessage.id);
@@ -204,7 +206,6 @@ const ChatRoom = () => {
 
           setMessages(roomId, updatedMessages);
         } else {
-          const { messageHistory, setMessages } = useChatStore.getState();
           const messages = messageHistory[roomId] || [];
           const updatedMessages = messages.filter((msg) => msg.id !== tempMessage.id);
           setMessages(roomId, updatedMessages);
@@ -214,7 +215,7 @@ const ChatRoom = () => {
         alert('發送訊息失敗，請稍後再試');
       }
     },
-    [currentRoom, currentUser, addRoom, setCurrentRoom, addMessage]
+    [currentRoom, currentUser, addRoom, setCurrentRoom, addMessage, messageHistory, setMessages]
   );
 
   if (!currentRoom) return null;
@@ -229,6 +230,7 @@ const ChatRoom = () => {
         flex items-center gap-3 px-4
         h-[60px] flex-none
         bg-white border-b border-neutral-200
+        dark:bg-neutral-800 dark:border-neutral-700
         shadow-sm
       ">
         {isMobile && (
@@ -294,7 +296,7 @@ const ChatRoom = () => {
 
       {/* Chat Content */}
       <div className="flex flex-1 min-h-0 relative">
-        <div className="flex-1 flex flex-col min-w-0 bg-neutral-50">
+        <div className="flex-1 flex flex-col min-w-0 bg-neutral-50 dark:bg-neutral-800">
           <MessageList roomId={currentRoom.id} />
         </div>
         {showMembers && <MembersPanel onClose={() => setShowMembers(false)} />}

@@ -33,10 +33,11 @@ export function useSSE(roomId: string, userId: string) {
       es.addEventListener('error', () => {
         es?.close();
         if (!active) return;
+        const delay = retryDelay;
+        retryDelay = Math.min(retryDelay * 2, 30_000);
         retryTimer = setTimeout(() => {
-          retryDelay = Math.min(retryDelay * 2, 30_000);
           connect();
-        }, retryDelay);
+        }, delay);
       });
     }
 

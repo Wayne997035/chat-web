@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Bell, ChevronDown } from 'lucide-react';
 import { useChatStore } from '../../store/chatStore';
 import { Avatar } from '../ui/Avatar';
 
@@ -80,8 +81,9 @@ const Navbar = () => {
       >
         <img
           src="/logo.png"
-          alt="ChatOwl logo"
-          className="w-8 h-8 rounded-full object-cover"
+          alt=""
+          aria-hidden="true"
+          className="w-8 h-8 rounded-full object-cover hidden md:block"
         />
         <span className="text-lg font-semibold text-white hidden sm:block">
           ChatOwl
@@ -135,7 +137,7 @@ const Navbar = () => {
             focus-visible:ring-offset-primary-700
           "
         >
-          <span className="text-base" aria-hidden="true">🔔</span>
+          <Bell size={20} aria-hidden="true" />
           {totalUnread > 0 && (
             <>
               <span
@@ -164,12 +166,11 @@ const Navbar = () => {
             "
           >
             <Avatar name={currentUser} size="sm" />
-            <span
-              className={`text-white/70 text-xs transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`}
+            <ChevronDown
+              size={16}
+              className={`text-white/70 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`}
               aria-hidden="true"
-            >
-              ▾
-            </span>
+            />
           </button>
 
           {showUserMenu && (
@@ -179,9 +180,9 @@ const Navbar = () => {
               className="
                 absolute right-0 top-full mt-1
                 w-60
-                bg-white dark:bg-[#1a2438]
+                bg-white dark:bg-neutral-800
                 rounded-xl shadow-xl
-                border border-neutral-200 dark:border-[#2d3748]
+                border border-neutral-200 dark:border-neutral-700
                 z-[100]
                 py-1
               "

@@ -32,7 +32,7 @@ const Login = () => {
       if (password.length >= 4) {
         setCurrentUser(username);
         sessionStorage.setItem('chatapp_user', username);
-        sessionStorage.setItem('chatapp_token', 'mock_token_' + Date.now());
+        sessionStorage.setItem('chatapp_token', crypto.randomUUID()); // TODO: replace with real auth API
         navigate('/');
       } else {
         setError('密碼至少需要 4 個字元');

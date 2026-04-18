@@ -73,7 +73,7 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
   };
 
   return (
-    <div className="flex-none border-t border-neutral-200 bg-white">
+    <div className="flex-none border-t border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
       {error && (
         <div className="px-4 pt-2">
           <p className="text-xs text-error-500">{error}</p>
@@ -92,6 +92,7 @@ const MessageInput = ({ onSend, disabled = false }: MessageInputProps) => {
             flex-1 min-h-[44px] max-h-[120px]
             px-4 py-2.5
             bg-neutral-50 border border-neutral-200
+            dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100
             rounded-2xl
             text-[15px] text-neutral-900
             placeholder:text-neutral-400

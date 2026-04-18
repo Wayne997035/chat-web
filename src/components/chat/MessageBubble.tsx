@@ -95,10 +95,11 @@ const MessageBubble = memo(({ message, room }: MessageBubbleProps) => {
       </div>
 
       <div className="max-w-[70%]">
-        <p className="text-xs text-accent-500 font-medium mb-0.5 ml-1">{senderName}</p>
+        <p className="text-xs text-accent-500 dark:text-accent-400 font-medium mb-0.5 ml-1">{senderName}</p>
         <div
           className="
             bg-white border border-neutral-100 text-neutral-900
+            dark:bg-[#253248] dark:text-neutral-100 dark:border-neutral-700
             px-4 py-2.5
             rounded-[18px_18px_18px_4px]
             text-sm leading-relaxed

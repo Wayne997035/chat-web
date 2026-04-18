@@ -42,8 +42,7 @@ const RoomItem = memo(({ room, onClick }: RoomItemProps) => {
 
   return (
     <button
-      role="option"
-      aria-selected={isActive}
+      aria-pressed={isActive}
       onClick={onClick}
       className={`
         w-full flex items-center gap-3 px-3 py-3
