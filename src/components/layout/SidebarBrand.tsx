@@ -32,7 +32,7 @@ const SidebarBrand = ({ onOpenCreate }: SidebarBrandProps) => {
           color: 'inherit',
         }}
       >
-        <Icon.Owl size={30} />
+        <img src="/logo.png" alt="ChatOwl" style={{ width: 30, height: 30, borderRadius: 8, display: 'block', objectFit: 'cover' }} />
         <div>
           <div style={{ fontWeight: 600, fontSize: 15, letterSpacing: '-0.01em', color: 'var(--color-sb-text)' }}>
             ChatOwl

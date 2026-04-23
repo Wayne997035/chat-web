@@ -96,17 +96,12 @@ const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => 
       return;
     }
     const room = rooms.find(r => r.id === roomId);
-    if (room) {
-      setCurrentRoom(room);
-      // Mark as read
-      requestAnimationFrame(() => {
-        const updatedRoom = { ...room, unread_count: 0 };
-        setCurrentRoom(updatedRoom);
-        setRooms(prev => prev.map(r => r.id === roomId ? updatedRoom : r));
-      });
-    }
-    navigate('/messages');
-  }, [onSelectRoom, rooms, setCurrentRoom, setRooms, navigate]);
+    if (!room) return;
+    const roomWithRead = { ...room, unread_count: 0 };
+    setCurrentRoom(roomWithRead);
+    setRooms(prev => prev.map(r => r.id === roomId ? roomWithRead : r));
+    openChatPopup(roomWithRead);
+  }, [onSelectRoom, rooms, setCurrentRoom, setRooms, openChatPopup]);
 
   const handlePresenceClick = useCallback((person: Person) => {
     if (person.id === currentUser) return;
