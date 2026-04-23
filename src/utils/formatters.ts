@@ -2,6 +2,18 @@ import { format, formatDistanceToNow, isToday, isYesterday, isThisWeek } from 'd
 import { zhTW } from 'date-fns/locale';
 
 /**
+ * 格式化訊息預覽（隱藏加密內容，剝離 plaintext: 前綴）
+ */
+export function formatMessagePreview(content: string | undefined): string {
+  if (!content) return '';
+  if (/^v\d+:aes256gcm:/.test(content)) return '🔒 加密訊息';
+  if (content.startsWith('aes256gcm:')) return '🔒 加密訊息';
+  if (content.startsWith('aes256ctr:')) return '🔒 加密訊息';
+  if (content.startsWith('plaintext:')) return content.slice('plaintext:'.length);
+  return content;
+}
+
+/**
  * 格式化訊息時間（用於聊天室列表）
  */
 export const formatMessageTime = (timestamp: number): string => {

@@ -3,7 +3,6 @@ import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
 import type { Room } from '../../types';
 import RoomItem from './RoomItem';
-import './ChatList.css';
 
 interface ChatListProps {
   onCreateRoom: () => void;
@@ -89,6 +88,8 @@ const ChatList = ({ onSelectRoom }: ChatListProps) => {
     }
   }, [hasMore, loadRooms]);
 
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // 節流處理滾動事件
   const throttledScroll = useCallback(() => {
     if (scrollTimeoutRef.current) return;
@@ -97,8 +98,6 @@ const ChatList = ({ onSelectRoom }: ChatListProps) => {
       scrollTimeoutRef.current = null;
     }, 200);
   }, [handleScroll]);
-
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 選擇聊天室
   const handleSelectRoom = useCallback((roomId: string) => {
@@ -141,14 +140,14 @@ const ChatList = ({ onSelectRoom }: ChatListProps) => {
   }, [rooms]);
 
   return (
-    <div className="chat-list-container">
-      <div 
-        className="room-list" 
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div
         ref={listRef}
         onScroll={throttledScroll}
+        style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 4 }}
       >
         {sortedRooms.length === 0 && !isLoading ? (
-          <div className="empty-list">暫無聊天室</div>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-main-text-dim)', fontSize: 14 }}>暫無聊天室</div>
         ) : (
           sortedRooms.map(room => (
             <RoomItem
@@ -159,7 +158,7 @@ const ChatList = ({ onSelectRoom }: ChatListProps) => {
           ))
         )}
         {isLoading && (
-          <div className="loading-indicator">載入中...</div>
+          <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-main-text-dim)', fontSize: 13 }}>載入中...</div>
         )}
       </div>
     </div>

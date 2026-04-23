@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chatStore';
-import { getDisplayName, getInitials, getAvatarColor } from '../utils/formatters';
+import { getDisplayName, getInitials, getAvatarColor, formatMessagePreview } from '../utils/formatters';
 import './Home.css';
 
 const Home = () => {
@@ -121,7 +121,7 @@ const Home = () => {
                     <div className="chat-info">
                       <h3 className="chat-name">{displayName}</h3>
                       <p className="chat-preview">
-                        {room.last_message || '開始對話...'}
+                        {formatMessagePreview(room.last_message) || '開始對話...'}
                       </p>
                     </div>
                     {(room.unread_count || 0) > 0 && (

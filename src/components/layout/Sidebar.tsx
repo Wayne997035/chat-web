@@ -1,15 +1,57 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
-import { getInitials, getAvatarColor } from '../../utils/formatters';
-import { Avatar } from '../ui/Avatar';
-import type { Room } from '../../types';
+import type { Room, Person } from '../../types';
+import { getDisplayName } from '../../utils/formatters';
+import SidebarBrand from './SidebarBrand';
+import SidebarSearchInput from './SidebarSearchInput';
+import NavItem from './NavItem';
+import RoomRow from './RoomRow';
+import PresenceItem from './PresenceItem';
+import SidebarFooter from './SidebarFooter';
 
-const Sidebar = () => {
-  const location = useLocation();
-  const { currentUser, rooms, roomsLoaded, openChatPopup } = useChatStore();
-  const [loadingContact, setLoadingContact] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+type NavId = 'all' | 'contacts' | 'groups' | 'starred';
+
+interface SidebarProps {
+  activeRoomId?: string | null;
+  onSelectRoom?: (roomId: string) => void;
+  onOpenCreate?: () => void;
+}
+
+// Deterministic gradient colors
+const GRADIENT_PALETTE: [string, string][] = [
+  ['#2563EB', '#6366F1'],
+  ['#059669', '#0D9488'],
+  ['#D97706', '#DC2626'],
+  ['#7C3AED', '#DB2777'],
+  ['#0891B2', '#0D9488'],
+  ['#B45309', '#92400E'],
+  ['#065F46', '#0F766E'],
+];
+
+function getPersonColor(userId: string): [string, string] {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return GRADIENT_PALETTE[Math.abs(hash) % GRADIENT_PALETTE.length];
+}
+
+// Static online users list (TODO: replace with real presence API)
+const ONLINE_USER_IDS = ['user_alice', 'user_bob', 'user_charlie', 'user_david', 'user_emma', 'user_frank', 'user_grace'];
+
+const NAV_ITEMS: { id: NavId; icon: 'MessageSquare' | 'Users' | 'UserGroup' | 'Star'; label: string }[] = [
+  { id: 'all', icon: 'MessageSquare', label: '所有對話' },
+  { id: 'contacts', icon: 'Users', label: '聯絡人' },
+  { id: 'groups', icon: 'UserGroup', label: '群組' },
+  { id: 'starred', icon: 'Star', label: '重要訊息' },
+];
+
+const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => {
+  const navigate = useNavigate();
+  const { currentUser, rooms, setCurrentRoom, setRooms, roomsLoaded, openChatPopup } = useChatStore();
+  const [activeNav, setActiveNav] = useState<NavId>('all');
+  const [search, setSearch] = useState('');
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -17,345 +59,190 @@ const Sidebar = () => {
     return () => { isMountedRef.current = false; };
   }, []);
 
-  const menuItems = [
-    { path: '/messages', label: '所有對話' },
-    { path: '/contacts', label: '聯絡人' },
-    { path: '/groups', label: '我的群組' },
-    { path: '/starred', label: '重要訊息' },
-    { path: '/archived', label: '封存對話' },
-  ];
+  const onlineUsers = useMemo((): Person[] => {
+    return ONLINE_USER_IDS
+      .filter(id => id !== currentUser)
+      .map(id => {
+        const name = getDisplayName(id);
+        return { id, name, zh: name, status: 'online' as const, color: getPersonColor(id) };
+      });
+  }, [currentUser]);
 
-  // TODO: replace with real presence API
-  const onlineUsers = [
-    { id: 'user_alice', name: 'Alice', online: true },
-    { id: 'user_bob', name: 'Bob', online: true },
-    { id: 'user_charlie', name: 'Charlie', online: true },
-    { id: 'user_david', name: 'David', online: true },
-    { id: 'user_emma', name: 'Emma', online: true },
-    { id: 'user_frank', name: 'Frank', online: true },
-    { id: 'user_grace', name: 'Grace', online: true },
-  ].filter(u => u.id !== currentUser && u.online);
+  const currentUserPerson: Person = useMemo(() => {
+    const name = getDisplayName(currentUser) || currentUser;
+    return { id: currentUser, name, zh: name, status: 'online', color: getPersonColor(currentUser) };
+  }, [currentUser]);
 
-  const findExistingRoom = (contactId: string): Room | undefined => {
-    return rooms.find(room => {
-      if (room.type !== 'direct') return false;
+  const filteredRooms = useMemo((): Room[] => {
+    let filtered = [...rooms];
 
-      if (room.members && room.members.length > 0) {
-        const hasContact = room.members.some(m => m.user_id === contactId);
-        const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
-        if (hasContact && hasCurrentUser) return true;
-      }
-
-      if (room.name) {
-        const nameIncludesContact = room.name.includes(contactId);
-        const nameIncludesCurrentUser = room.name.includes(currentUser);
-        if (nameIncludesContact && nameIncludesCurrentUser) return true;
-      }
-
-      return false;
-    });
-  };
-
-  const handleStartChatWithContact = async (contactId: string) => {
-    if (contactId === currentUser || loadingContact) return;
-
-    if (roomsLoaded) {
-      const existingRoom = findExistingRoom(contactId);
-
-      if (existingRoom) {
-        const roomWithMembers: Room = {
-          ...existingRoom,
-          members: existingRoom.members || [
-            { user_id: currentUser, role: 'admin' },
-            { user_id: contactId, role: 'member' },
-          ],
-        };
-        openChatPopup(roomWithMembers);
-        return;
-      }
-
-      const tempRoom: Room = {
-        id: `temp_${contactId}`,
-        name: '',
-        type: 'direct',
-        owner_id: currentUser,
-        members: [
-          { user_id: currentUser, role: 'admin' },
-          { user_id: contactId, role: 'member' },
-        ],
-        created_at: Math.floor(Date.now() / 1000),
-        isTemporary: true,
-        targetContactId: contactId,
-      };
-      openChatPopup(tempRoom);
-      return;
+    // Filter by nav
+    if (activeNav === 'groups') {
+      filtered = filtered.filter(r => r.type === 'group');
+    } else if (activeNav === 'contacts') {
+      filtered = filtered.filter(r => r.type === 'direct');
     }
 
-    setLoadingContact(contactId);
+    // Filter by search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(r => r.name.toLowerCase().includes(q));
+    }
 
-    const startTime = Date.now();
-    const maxWaitTime = 5000;
+    // Sort by last message time descending
+    return filtered.sort((a, b) => {
+      const tA = a.last_message_time || a.created_at;
+      const tB = b.last_message_time || b.created_at;
+      return tB - tA;
+    });
+  }, [rooms, activeNav, search]);
 
-    const checkAndOpen = () => {
-      if (!isMountedRef.current) return;
-      const { rooms: latestRooms, roomsLoaded: loaded } = useChatStore.getState();
+  const handleSelectRoom = useCallback((roomId: string) => {
+    if (onSelectRoom) {
+      onSelectRoom(roomId);
+      return;
+    }
+    const room = rooms.find(r => r.id === roomId);
+    if (room) {
+      setCurrentRoom(room);
+      // Mark as read
+      requestAnimationFrame(() => {
+        const updatedRoom = { ...room, unread_count: 0 };
+        setCurrentRoom(updatedRoom);
+        setRooms(prev => prev.map(r => r.id === roomId ? updatedRoom : r));
+      });
+    }
+  }, [onSelectRoom, rooms, setCurrentRoom, setRooms]);
 
-      if (loaded) {
-        setLoadingContact(null);
-
-        const existingRoom = latestRooms.find(room => {
-          if (room.type !== 'direct') return false;
-          if (room.members && room.members.length > 0) {
-            const hasContact = room.members.some(m => m.user_id === contactId);
-            const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
-            if (hasContact && hasCurrentUser) return true;
-          }
-          if (room.name) {
-            const nameIncludesContact = room.name.includes(contactId);
-            const nameIncludesCurrentUser = room.name.includes(currentUser);
-            if (nameIncludesContact && nameIncludesCurrentUser) return true;
-          }
-          return false;
-        });
-
-        if (existingRoom) {
-          const roomWithMembers: Room = {
-            ...existingRoom,
-            members: existingRoom.members || [
-              { user_id: currentUser, role: 'admin' },
-              { user_id: contactId, role: 'member' },
-            ],
-          };
-          openChatPopup(roomWithMembers);
-        } else {
-          const tempRoom: Room = {
-            id: `temp_${contactId}`,
-            name: '',
-            type: 'direct',
-            owner_id: currentUser,
-            members: [
-              { user_id: currentUser, role: 'admin' },
-              { user_id: contactId, role: 'member' },
-            ],
-            created_at: Math.floor(Date.now() / 1000),
-            isTemporary: true,
-            targetContactId: contactId,
-          };
-          openChatPopup(tempRoom);
-        }
+  const handlePresenceClick = useCallback((person: Person) => {
+    if (person.id === currentUser) return;
+    if (roomsLoaded) {
+      const existingRoom = rooms.find(r => {
+        if (r.type !== 'direct') return false;
+        if (r.members?.some(m => m.user_id === person.id) && r.members?.some(m => m.user_id === currentUser)) return true;
+        if (r.name?.includes(person.id) && r.name?.includes(currentUser)) return true;
+        return false;
+      });
+      if (existingRoom) {
+        openChatPopup({ ...existingRoom, members: existingRoom.members || [{ user_id: currentUser, role: 'admin' }, { user_id: person.id, role: 'member' }] });
         return;
       }
-
-      if (Date.now() - startTime >= maxWaitTime) {
-        setLoadingContact(null);
-        const tempRoom: Room = {
-          id: `temp_${contactId}`,
-          name: '',
-          type: 'direct',
-          owner_id: currentUser,
-          members: [
-            { user_id: currentUser, role: 'admin' },
-            { user_id: contactId, role: 'member' },
-          ],
-          created_at: Math.floor(Date.now() / 1000),
-          isTemporary: true,
-          targetContactId: contactId,
-          connectionTimeout: true,
-        };
-        openChatPopup(tempRoom);
-        return;
-      }
-
-      setTimeout(checkAndOpen, 100);
+    }
+    const tempRoom: Room = {
+      id: `temp_${person.id}`,
+      name: '',
+      type: 'direct',
+      owner_id: currentUser,
+      members: [{ user_id: currentUser, role: 'admin' }, { user_id: person.id, role: 'member' }],
+      created_at: Math.floor(Date.now() / 1000),
+      isTemporary: true,
+      targetContactId: person.id,
     };
+    openChatPopup(tempRoom);
+  }, [currentUser, rooms, roomsLoaded, openChatPopup]);
 
-    checkAndOpen();
-  };
-
-  const isActive = (path: string, exact = false) => {
-    if (exact) return location.pathname === path;
-    return location.pathname.startsWith(path);
-  };
+  const handleOpenSettings = useCallback(() => {
+    navigate('/settings');
+  }, [navigate]);
 
   return (
     <aside
-      className="
-        hidden lg:flex flex-col
-        fixed left-0 top-14
-        w-80 h-[calc(100vh-56px)]
-        bg-primary-800 dark:bg-primary-900
-        overflow-hidden
-        z-10
-      "
+      aria-label="對話側欄"
+      style={{
+        width: 'var(--sidebar-w)',
+        height: '100%',
+        background: 'var(--color-sb-bg)',
+        borderRight: '1px solid var(--color-sb-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}
     >
-      {/* Header */}
-      <div className="
-        flex items-center justify-between
-        h-[52px] px-4 flex-none
-        border-b border-white/10
-      ">
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="" className="w-6 h-6 rounded-md" aria-hidden="true" />
-          <span className="text-base font-semibold text-white">ChatOwl</span>
-        </div>
-        <button
-          aria-label="新增對話"
-          className="
-            flex items-center justify-center w-8 h-8 rounded-full
-            text-white/70 hover:text-white hover:bg-white/12
-            transition-colors duration-150
-            focus-visible:outline-none focus-visible:ring-2
-            focus-visible:ring-white/50
-          "
-        >
-          <span className="text-lg leading-none">+</span>
-        </button>
-      </div>
+      {/* Brand */}
+      <SidebarBrand onOpenCreate={onOpenCreate ?? (() => {})} />
 
       {/* Search */}
-      <div className="relative mx-3 my-2 flex-none">
-        <input
-          type="search"
-          placeholder="搜尋對話..."
-          aria-label="搜尋對話"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="
-            w-full h-9 px-4
-            bg-white/10 hover:bg-white/15
-            border border-white/15 hover:border-white/25
-            rounded-full
-            text-sm text-white
-            placeholder:text-white/50
-            focus-visible:outline-none
-            focus-visible:bg-white/18
-            focus-visible:border-white/35
-            focus-visible:ring-1 focus-visible:ring-white/30
-            transition-all duration-150
-          "
-        />
+      <SidebarSearchInput value={search} onChange={setSearch} />
+
+      {/* Nav */}
+      <div style={{ padding: '8px 8px 0 8px', flexShrink: 0 }}>
+        {NAV_ITEMS.map(n => (
+          <NavItem
+            key={n.id}
+            icon={n.icon}
+            label={n.label}
+            active={activeNav === n.id}
+            onClick={() => setActiveNav(n.id)}
+          />
+        ))}
       </div>
 
-      {/* Navigation */}
-      <nav aria-label="主要選單" className="flex-none px-2 pb-1">
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`
-              flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5
-              text-sm font-medium
-              transition-colors duration-150
-              focus-visible:outline-none focus-visible:ring-2
-              focus-visible:ring-white/50 focus-visible:ring-inset
-              ${isActive(item.path)
-                ? 'bg-primary-600 text-white'
-                : 'text-white/75 hover:bg-white/8 hover:text-white'
-              }
-            `}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      {/* Section label + room list */}
+      <div style={{
+        padding: '14px 16px 6px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: '0.04em',
+        color: 'var(--color-sb-text-dim)',
+        textTransform: 'uppercase',
+        flexShrink: 0,
+      }}>
+        <span>對話</span>
+        <span style={{ textTransform: 'none', fontSize: 11 }}>{filteredRooms.length}</span>
+      </div>
 
-      <div className="mx-4 border-t border-white/10 flex-none" />
-
-      {/* Online contacts */}
-      {onlineUsers.length > 0 && (
-        <div className="flex-1 overflow-y-auto overscroll-contain py-2
-          [&::-webkit-scrollbar]:w-1
-          [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:bg-white/20
-          [&::-webkit-scrollbar-thumb]:rounded-full
-        ">
-          <div className="px-4 py-1.5 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-success-500 flex-none" />
-            <span className="text-xs font-semibold text-white/55 uppercase tracking-wider">
-              在線上 ({onlineUsers.length})
-            </span>
+      {/* Scrollable room list + presence */}
+      <div
+        className="sb-scroll"
+        style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingBottom: 8 }}
+      >
+        {filteredRooms.length === 0 && search && (
+          <div style={{ padding: '24px 20px', color: 'var(--color-sb-text-dim)', fontSize: 12.5, textAlign: 'center' }}>
+            找不到符合「{search}」的對話
           </div>
+        )}
 
-          {onlineUsers.map(contact => {
-            const avatarColor = getAvatarColor(contact.id);
-            const isLoading = loadingContact === contact.id;
-            return (
-              <button
-                key={contact.id}
-                onClick={() => handleStartChatWithContact(contact.id)}
-                className="
-                  w-full flex items-center gap-3 px-3 py-2.5 mx-1
-                  rounded-xl
-                  text-white/75 hover:text-white hover:bg-white/8
-                  transition-colors duration-150
-                  focus-visible:outline-none focus-visible:ring-2
-                  focus-visible:ring-white/50 focus-visible:ring-inset
-                "
-                style={{ width: 'calc(100% - 8px)' }}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-none relative text-white text-xs font-semibold"
-                  style={{ backgroundColor: avatarColor }}
-                >
-                  {isLoading ? (
-                    <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  ) : (
-                    getInitials(contact.name)
-                  )}
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-primary-800" />
-                </div>
-                <span className="text-sm font-medium truncate">
-                  {isLoading ? '連線中...' : contact.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+        {filteredRooms.map(room => (
+          <RoomRow
+            key={room.id}
+            room={room}
+            active={room.id === (activeRoomId ?? null)}
+            onClick={() => handleSelectRoom(room.id)}
+            currentUser={currentUser}
+          />
+        ))}
+
+        {/* Online presence section */}
+        {onlineUsers.length > 0 && (
+          <>
+            <div style={{
+              padding: '14px 16px 6px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: '0.04em',
+              color: 'var(--color-sb-text-dim)',
+              textTransform: 'uppercase',
+            }}>
+              <span>在線上 ({onlineUsers.length})</span>
+            </div>
+            <div style={{ padding: '2px 8px 10px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {onlineUsers.map(p => (
+                <PresenceItem key={p.id} person={p} onClick={() => handlePresenceClick(p)} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Footer */}
-      <div className="
-        flex-none h-[52px] px-3
-        border-t border-white/10
-        flex items-center
-      ">
-        <button
-          aria-label="新增對話"
-          onClick={() => { /* TODO: open new conversation flow */ }}
-          className="
-            w-full flex items-center gap-2 px-3 py-2 rounded-xl
-            text-white/55 hover:text-white hover:bg-white/8
-            text-sm font-medium
-            transition-colors duration-150
-            focus-visible:outline-none focus-visible:ring-2
-            focus-visible:ring-white/50 focus-visible:ring-inset
-          "
-        >
-          <span className="text-base">+</span>
-          新增對話
-        </button>
-      </div>
-
-      {/* Profile link at bottom */}
-      <Link
-        to="/profile"
-        className={`
-          flex items-center gap-3 px-4 py-3 flex-none
-          border-t border-white/10
-          transition-colors duration-150
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-inset
-          ${isActive('/profile')
-            ? 'bg-primary-600'
-            : 'hover:bg-white/8'
-          }
-        `}
-      >
-        <Avatar name={currentUser} size="sm" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{currentUser}</p>
-          <p className="text-xs text-success-400">在線上</p>
-        </div>
-      </Link>
+      <SidebarFooter currentUser={currentUserPerson} onOpenSettings={handleOpenSettings} />
     </aside>
   );
 };

@@ -5,6 +5,15 @@ export interface User {
   status: 'online' | 'offline';
 }
 
+// Person type (matches design system persona shape)
+export interface Person {
+  id: string;
+  name: string;     // en name
+  zh?: string;      // Chinese display name
+  status: 'online' | 'away' | 'offline';
+  color?: [string, string]; // gradient colors [from, to]
+}
+
 // 成員類型
 export interface Member {
   user_id: string;
@@ -28,6 +37,9 @@ export interface Room {
   connectionTimeout?: boolean;
 }
 
+// Message status type
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+
 // 消息類型
 export interface Message {
   id: string;
@@ -38,6 +50,7 @@ export interface Message {
   created_at: number;
   updated_at?: number;
   read_by?: string[];
+  status?: MessageStatus;
 }
 
 // API 回應類型

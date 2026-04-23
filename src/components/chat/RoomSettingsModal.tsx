@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
-import './RoomSettingsModal.css';
 
 interface RoomSettingsModalProps {
   onClose: () => void;
@@ -131,43 +130,68 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
     }
   };
 
+  const btnBase: React.CSSProperties = {
+    padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
+    fontSize: 14, fontWeight: 500, transition: 'all 150ms',
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>群組設置</h3>
-          <button className="close-btn" onClick={onClose}>×</button>
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 'var(--z-modal)' as React.CSSProperties['zIndex'], animation: 'fadeIn 200ms ease',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-modal-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--color-main-bg-2)', borderRadius: 12,
+          width: '90%', maxWidth: 500, maxHeight: '80vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-modal)', border: '1px solid var(--color-main-border)',
+          color: 'var(--color-main-text)',
+        }}
+      >
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-main-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 id="settings-modal-title" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--color-main-text)' }}>群組設置</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="關閉"
+            style={{ background: 'var(--color-sb-hover)', border: 'none', fontSize: 24, color: 'var(--color-main-text-dim)', cursor: 'pointer', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >×</button>
         </div>
-        
-        <div className="modal-body">
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
-          
-          <div className="settings-section">
-            <h4>群組成員 ({currentRoom.members?.length || 0})</h4>
-            <div className="members-list-container">
+
+        <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
+          {error && <div style={{ background: 'var(--color-error-100)', color: 'var(--color-error-500)', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14 }}>{error}</div>}
+          {success && <div style={{ background: 'var(--color-success-100)', color: 'var(--color-green)', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14 }}>{success}</div>}
+
+          <div style={{ marginBottom: 24 }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-main-text)', marginBottom: 12 }}>群組成員 ({currentRoom.members?.length || 0})</h4>
+            <div style={{ border: '1px solid var(--color-main-border)', borderRadius: 8, maxHeight: 300, overflowY: 'auto', background: 'var(--color-main-bg)' }}>
               {currentRoom.members?.map(member => {
                 const user = users.find(u => u.id === member.user_id);
                 const isCurrentUser = member.user_id === currentUser;
-                
+
                 return (
-                  <div key={member.user_id} className="member-item-row">
-                    <div className="member-info-row">
-                      <span className="member-name">
-                        {user?.name || member.user_id}
-                      </span>
-                      {member.role === 'admin' && (
-                        <span className="badge badge-admin">管理員</span>
-                      )}
-                      {isCurrentUser && (
-                        <span className="badge badge-me">我</span>
-                      )}
+                  <div key={member.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--color-main-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-main-text)' }}>{user?.name || member.user_id}</span>
+                      {member.role === 'admin' && <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 12, fontWeight: 600, background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>管理員</span>}
+                      {isCurrentUser && <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 12, background: 'var(--color-sb-tint)', color: 'var(--color-main-text-dim)' }}>我</span>}
                     </div>
                     {!isCurrentUser && (
                       <button
-                        className="btn-remove"
+                        type="button"
                         onClick={() => handleRemoveMember(member.user_id)}
                         disabled={loading}
+                        style={{ ...btnBase, background: 'transparent', color: 'var(--color-red)', border: '1px solid var(--color-red)', opacity: loading ? 0.5 : 1 }}
                       >
                         移除
                       </button>
@@ -179,26 +203,25 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
           </div>
 
           {availableUsers.length > 0 && (
-            <div className="settings-section">
-              <h4>添加成員</h4>
-              <div className="add-member-row">
+            <div style={{ marginBottom: 24 }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-main-text)', marginBottom: 12 }}>添加成員</h4>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <select
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                   disabled={loading}
-                  className="member-select"
+                  style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--color-main-border)', borderRadius: 8, background: 'var(--color-input-bg)', color: 'var(--color-main-text)', fontSize: 14, cursor: 'pointer' }}
                 >
                   <option value="">選擇要添加的成員</option>
                   {availableUsers.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
+                    <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
                 <button
-                  className="btn btn-primary"
+                  type="button"
                   onClick={handleAddMember}
                   disabled={loading || !selectedUser}
+                  style={{ ...btnBase, background: 'var(--color-accent)', color: '#fff', border: 'none', opacity: loading || !selectedUser ? 0.5 : 1 }}
                 >
                   添加
                 </button>
@@ -207,15 +230,20 @@ const RoomSettingsModal = ({ onClose }: RoomSettingsModalProps) => {
           )}
         </div>
 
-        <div className="modal-footer">
+        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-main-border)', display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
-            className="btn btn-danger"
+            type="button"
             onClick={handleLeaveRoom}
             disabled={loading}
+            style={{ ...btnBase, background: 'var(--color-red)', color: 'white', border: 'none', opacity: loading ? 0.5 : 1 }}
           >
             退出群組
           </button>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ ...btnBase, background: 'var(--color-sb-tint)', color: 'var(--color-main-text)', border: '1px solid var(--color-main-border)' }}
+          >
             關閉
           </button>
         </div>

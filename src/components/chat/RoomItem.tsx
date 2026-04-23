@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import type { Room } from '../../types';
-import { formatMessageTime, getInitials, getDisplayName, getAvatarColor } from '../../utils/formatters';
+import { formatMessageTime, formatMessagePreview, getInitials, getDisplayName, getAvatarColor } from '../../utils/formatters';
 import { useChatStore } from '../../store/chatStore';
+
 
 interface RoomItemProps {
   room: Room;
@@ -25,7 +26,8 @@ const RoomItem = memo(({ room, onClick }: RoomItemProps) => {
   };
 
   const displayName = getRoomDisplayName(room);
-  const lastMessage = room.last_message ?? '開始新對話...';
+  const rawLastMessage = room.last_message;
+  const lastMessage = rawLastMessage ? formatMessagePreview(rawLastMessage) : '開始新對話...';
   const lastTime = room.last_message_time ? formatMessageTime(room.last_message_time) : '';
   const unreadCount = room.unread_count ?? 0;
   const hasUnread = unreadCount > 0;
