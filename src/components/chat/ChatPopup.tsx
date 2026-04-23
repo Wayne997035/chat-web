@@ -404,7 +404,7 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
       {/* Body - 只在非最小化時顯示 */}
       {!isMinimized && (
         <>
-          <div style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--color-main-bg-2)' }}>
+          <div style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--color-main-bg-2)', display: 'flex', flexDirection: 'column' }}>
             {connectionError ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 20, textAlign: 'center' }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>

@@ -49,7 +49,7 @@ const NAV_ITEMS: { id: NavId; icon: 'MessageSquare' | 'Users' | 'UserGroup' | 'S
 
 const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => {
   const navigate = useNavigate();
-  const { currentUser, rooms, setCurrentRoom, setRooms, roomsLoaded, openChatPopup } = useChatStore();
+  const { currentUser, rooms, roomsLoaded, openChatPopup } = useChatStore();
   const [activeNav, setActiveNav] = useState<NavId>('all');
   const [search, setSearch] = useState('');
   const onlineUsers = useMemo((): Person[] => {
@@ -97,11 +97,8 @@ const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => 
     }
     const room = rooms.find(r => r.id === roomId);
     if (!room) return;
-    const roomWithRead = { ...room, unread_count: 0 };
-    setCurrentRoom(roomWithRead);
-    setRooms(prev => prev.map(r => r.id === roomId ? roomWithRead : r));
-    openChatPopup(roomWithRead);
-  }, [onSelectRoom, rooms, setCurrentRoom, setRooms, openChatPopup]);
+    openChatPopup(room);
+  }, [onSelectRoom, rooms, openChatPopup]);
 
   const handlePresenceClick = useCallback((person: Person) => {
     if (person.id === currentUser) return;

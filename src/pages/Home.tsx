@@ -59,7 +59,7 @@ const STAT_CELL_STYLE: React.CSSProperties = {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { rooms, currentUser, setCurrentRoom, setRooms, openChatPopup, roomsLoaded } = useChatStore();
+  const { rooms, currentUser, openChatPopup, roomsLoaded } = useChatStore();
 
   const { recentRooms, totalUnread, todayMsgs, mostActive, latestRoom, feedRooms, activityRoom } = useMemo(() => {
     const sorted = [...rooms].sort((a, b) => {
@@ -90,10 +90,7 @@ const Home = () => {
   );
 
   const handleViewRoom = (room: Room) => {
-    const roomWithRead = { ...room, unread_count: 0 };
-    setCurrentRoom(roomWithRead);
-    setRooms(prev => prev.map(r => r.id === room.id ? roomWithRead : r));
-    openChatPopup(roomWithRead);
+    openChatPopup(room);
   };
 
   const handleContactClick = (userId: string) => {

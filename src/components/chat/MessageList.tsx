@@ -161,6 +161,9 @@ const MessageList = ({ roomId }: MessageListProps) => {
         const total = msgs.length;
         const unreadCount = room.unread_count;
         initialUnreadIndex.current = unreadCount >= total ? 0 : total - unreadCount;
+        // Clear unread AFTER capturing the index so Sidebar/Home don't race-clear it first
+        const { setRooms } = useChatStore.getState();
+        setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r));
       }
 
       setStatus('loaded');
@@ -209,6 +212,9 @@ const MessageList = ({ roomId }: MessageListProps) => {
             const total = merged.length;
             const unreadCount = room.unread_count;
             initialUnreadIndex.current = unreadCount >= total ? 0 : total - unreadCount;
+            // Clear unread AFTER capturing the index
+            const { setRooms } = useChatStore.getState();
+            setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r));
           }
 
           setTimeout(() => {
