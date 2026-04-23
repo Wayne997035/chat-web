@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import type { Room, Person } from '../../types';
@@ -52,13 +52,6 @@ const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => 
   const { currentUser, rooms, setCurrentRoom, setRooms, roomsLoaded, openChatPopup } = useChatStore();
   const [activeNav, setActiveNav] = useState<NavId>('all');
   const [search, setSearch] = useState('');
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
   const onlineUsers = useMemo((): Person[] => {
     return ONLINE_USER_IDS
       .filter(id => id !== currentUser)
@@ -112,7 +105,8 @@ const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => 
         setRooms(prev => prev.map(r => r.id === roomId ? updatedRoom : r));
       });
     }
-  }, [onSelectRoom, rooms, setCurrentRoom, setRooms]);
+    navigate('/messages');
+  }, [onSelectRoom, rooms, setCurrentRoom, setRooms, navigate]);
 
   const handlePresenceClick = useCallback((person: Person) => {
     if (person.id === currentUser) return;

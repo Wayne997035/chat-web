@@ -108,6 +108,9 @@ const MessageList = ({ roomId }: MessageListProps) => {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error' | 'empty'>('loading');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const prevRoomIdRef = useRef<string | null>(null);
+  const unreadMarkerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToUnread = useRef(false);
+  const initialUnreadIndex = useRef<number>(-1);
 
   const loadMoreMessages = useCallback(async () => {
     if (isLoadingRef.current) return;
@@ -132,6 +135,9 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
   useEffect(() => {
     prevRoomIdRef.current = roomId;
+    // Reset unread tracking on room change
+    initialUnreadIndex.current = -1;
+    hasScrolledToUnread.current = false;
 
     if (!roomId || roomId.startsWith('temp_')) {
       setStatus('empty');
@@ -147,14 +153,28 @@ const MessageList = ({ roomId }: MessageListProps) => {
     const hasCache = cachedMessages && cachedMessages.length > 0;
 
     if (hasCache) {
+      // Calculate unread index from cached data
+      const storeState = useChatStore.getState();
+      const room = storeState.rooms.find(r => r.id === roomId);
+      if (room?.unread_count && room.unread_count > 0) {
+        const msgs = storeState.messageHistory[roomId] || [];
+        const total = msgs.length;
+        const unreadCount = room.unread_count;
+        initialUnreadIndex.current = unreadCount >= total ? 0 : total - unreadCount;
+      }
+
       setStatus('loaded');
       setTimeout(() => {
-        const container = messagesContainerRef.current;
-        if (container) container.scrollTop = container.scrollHeight;
+        if (initialUnreadIndex.current >= 0 && unreadMarkerRef.current) {
+          unreadMarkerRef.current.scrollIntoView({ block: 'start' });
+          hasScrolledToUnread.current = true;
+        } else {
+          const container = messagesContainerRef.current;
+          if (container) container.scrollTop = container.scrollHeight;
+        }
       }, 50);
       const onlyTemp = cachedMessages.every(m => m.id.startsWith('temp_'));
       if (onlyTemp) return;
-      return;
     }
 
     setStatus('loading');
@@ -182,9 +202,23 @@ const MessageList = ({ roomId }: MessageListProps) => {
           setHasMoreMessages(roomId, response.has_more || false);
           setStatus(merged.length === 0 ? 'empty' : 'loaded');
 
+          // Calculate unread index after loading
+          const storeState = useChatStore.getState();
+          const room = storeState.rooms.find(r => r.id === roomId);
+          if (room?.unread_count && room.unread_count > 0) {
+            const total = merged.length;
+            const unreadCount = room.unread_count;
+            initialUnreadIndex.current = unreadCount >= total ? 0 : total - unreadCount;
+          }
+
           setTimeout(() => {
-            const container = messagesContainerRef.current;
-            if (container) container.scrollTop = container.scrollHeight;
+            if (initialUnreadIndex.current >= 0 && unreadMarkerRef.current) {
+              unreadMarkerRef.current.scrollIntoView({ block: 'start' });
+              hasScrolledToUnread.current = true;
+            } else {
+              const container = messagesContainerRef.current;
+              if (container) container.scrollTop = container.scrollHeight;
+            }
           }, 50);
         } else {
           setErrorMsg('服務暫時無法使用，請稍後再試');
@@ -261,6 +295,7 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
   const containerStyle: React.CSSProperties = {
     flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
     padding: '20px 24px 8px 24px',
     display: 'flex',
@@ -312,6 +347,14 @@ const MessageList = ({ roomId }: MessageListProps) => {
   // Group messages by sender + day
   const groups = groupMessages(messages);
 
+  // Pre-compute each group's starting index before render
+  let runningIndex = 0;
+  const groupStartIndices = groups.map(group => {
+    const start = runningIndex;
+    runningIndex += group.messages.length;
+    return start;
+  });
+
   return (
     <div
       ref={messagesContainerRef}
@@ -328,10 +371,39 @@ const MessageList = ({ roomId }: MessageListProps) => {
       <EncryptionNotice />
 
       {groups.map((group, idx) => {
+        const groupStartIndex = groupStartIndices[idx];
+
+        // Determine if unread marker should appear before this group
+        const showUnreadMarker =
+          initialUnreadIndex.current >= 0 &&
+          groupStartIndex === initialUnreadIndex.current;
+
         // System message handling
         if (group.messages[0].type === 'system' || group.messages[0].sender_id === 'system') {
           return (
             <div key={`sys-${idx}`}>
+              {showUnreadMarker && (
+                <div
+                  ref={unreadMarkerRef}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 0',
+                    margin: '4px 0',
+                  }}
+                >
+                  <div style={{ flex: 1, height: 1, background: 'var(--color-main-border)' }} />
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-accent)',
+                    whiteSpace: 'nowrap',
+                    padding: '0 8px',
+                  }}>以下未讀</span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--color-main-border)' }} />
+                </div>
+              )}
               {group.dayLabel && <DaySeparator label={group.dayLabel} />}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                 <span style={{
@@ -350,6 +422,28 @@ const MessageList = ({ roomId }: MessageListProps) => {
 
         return (
           <div key={`grp-${idx}`}>
+            {showUnreadMarker && (
+              <div
+                ref={unreadMarkerRef}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 0',
+                  margin: '4px 0',
+                }}
+              >
+                <div style={{ flex: 1, height: 1, background: 'var(--color-main-border)' }} />
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--color-accent)',
+                  whiteSpace: 'nowrap',
+                  padding: '0 8px',
+                }}>以下未讀</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--color-main-border)' }} />
+              </div>
+            )}
             {group.dayLabel && <DaySeparator label={group.dayLabel} />}
             <MessageGroup
               messages={group.messages}
