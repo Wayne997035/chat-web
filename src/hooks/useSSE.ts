@@ -92,18 +92,26 @@ export const useSSE = ({ roomId, userId, onMessage, onError }: UseSSEOptions) =>
       // 錯誤處理
       eventSource.onerror = (error) => {
         if (!isMounted) return;
-        
+
         setIsConnected(false);
         onErrorRef.current?.(error);
-        
+
         // 關閉舊連接
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
           eventSourceRef.current = null;
         }
 
-        // 不要自動重試了，減少請求
-        // 如果需要重連，讓用戶重新進入聊天室
+        // 指數退避重連（最多 5 次，延遲上限 16 秒）
+        retryCountRef.current += 1;
+        if (retryCountRef.current <= 5 && isMounted) {
+          const delay = Math.min(16000, 1000 * Math.pow(2, retryCountRef.current - 1));
+          retryTimerRef.current = setTimeout(() => {
+            if (isMounted) {
+              connect();
+            }
+          }, delay);
+        }
       };
     };
 
@@ -120,7 +128,6 @@ export const useSSE = ({ roomId, userId, onMessage, onError }: UseSSEOptions) =>
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
-      setIsConnected(false);
     };
   }, [roomId, userId]);
 
