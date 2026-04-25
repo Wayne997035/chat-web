@@ -11,6 +11,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 
 const Messages = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [groupCreateError, setGroupCreateError] = useState<string | null>(null);
   const { rooms, currentRoom, setCurrentRoom, addRoom, openChatPopup, currentUser, setRooms } = useChatStore();
 
   // On desktop: clicking a room opens popup (existing behavior)
@@ -91,6 +92,7 @@ const Messages = () => {
   };
 
   const handleCreateGroup = async (name: string, userIds: string[]) => {
+    setGroupCreateError(null);
     try {
       const members: Member[] = [
         { user_id: currentUser, role: 'admin' },
@@ -110,8 +112,9 @@ const Messages = () => {
           openChatPopup(response.data);
         }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to create group';
+      setGroupCreateError(msg);
     }
   };
 
@@ -214,6 +217,12 @@ const Messages = () => {
             }}>
               聊天室
             </h1>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              {groupCreateError && (
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
+                  {groupCreateError}
+                </p>
+              )}
             <button
               type="button"
               onClick={() => setShowCreateModal(true)}
@@ -240,6 +249,7 @@ const Messages = () => {
             >
               <Icon.Plus size={18} />
             </button>
+            </div>
           </div>
 
           <ChatList onCreateRoom={() => setShowCreateModal(true)} onSelectRoom={handleRoomSelect} />
@@ -307,7 +317,7 @@ const Messages = () => {
 
       <CreateModal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => { setShowCreateModal(false); setGroupCreateError(null); }}
         onCreateDM={handleCreateDM}
         onCreateGroup={handleCreateGroup}
       />
