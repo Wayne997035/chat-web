@@ -5,6 +5,15 @@ export interface User {
   status: 'online' | 'offline';
 }
 
+// Person type (matches design system persona shape)
+export interface Person {
+  id: string;
+  name: string;     // en name
+  zh?: string;      // Chinese display name
+  status: 'online' | 'away' | 'offline';
+  color?: [string, string]; // gradient colors [from, to]
+}
+
 // 成員類型
 export interface Member {
   user_id: string;
@@ -25,8 +34,11 @@ export interface Room {
   unread_count?: number;
   isTemporary?: boolean;
   targetContactId?: string;
-  connectionTimeout?: boolean; // 標記是否連線超時
+  connectionTimeout?: boolean;
 }
+
+// Message status type
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 
 // 消息類型
 export interface Message {
@@ -38,10 +50,11 @@ export interface Message {
   created_at: number;
   updated_at?: number;
   read_by?: string[];
+  status?: MessageStatus;
 }
 
 // API 回應類型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -53,6 +66,5 @@ export interface ApiResponse<T = any> {
 // SSE 事件類型
 export interface SSEMessage {
   type: 'connected' | 'ping' | 'message' | 'error';
-  data?: any;
+  data?: unknown;
 }
-

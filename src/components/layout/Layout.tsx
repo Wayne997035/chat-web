@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
 import { chatApi } from '../../api/chat';
-import Navbar from './Navbar';
+import AppShell from './AppShell';
 import Sidebar from './Sidebar';
-import BottomNav from './BottomNav';
+import MobileBottomNav from './MobileBottomNav';
+import MobileDrawer from './MobileDrawer';
 import ChatPopup from '../chat/ChatPopup';
-import './Layout.css';
+
+const MOBILE_BREAKPOINT = 768;
 
 const Layout = () => {
   const location = useLocation();
@@ -14,7 +16,49 @@ const Layout = () => {
   const loadingRef = useRef(false);
   const hasInitialLoadRef = useRef(false);
 
-  // 只在初次載入時載入聊天室列表（用於首頁顯示未讀通知）
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Track viewport width
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      if (!e.matches) setDrawerOpen(false);
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Swipe from left edge to open drawer on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    let startX = 0;
+    let startY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      // Swipe right from left edge (first 24px)
+      if (startX < 24 && dx > 60 && dy < Math.abs(dx)) {
+        setDrawerOpen(true);
+      }
+    };
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isMobile]);
+
+  // Only load rooms on initial mount
   useEffect(() => {
     if (!currentUser || loadingRef.current || hasInitialLoadRef.current) return;
 
@@ -24,12 +68,12 @@ const Layout = () => {
         const response = await chatApi.getRooms(currentUser, 50, '');
         if (response.success && response.data) {
           setRooms(response.data);
-          setRoomsLoaded(true); // 標記已載入
+          setRoomsLoaded(true);
           hasInitialLoadRef.current = true;
         }
       } catch (error) {
         console.error('載入聊天室列表失敗:', error);
-        setRoomsLoaded(true); // 即使失敗也標記為已嘗試載入
+        setRoomsLoaded(true);
       } finally {
         loadingRef.current = false;
       }
@@ -38,31 +82,23 @@ const Layout = () => {
     loadRooms();
   }, [currentUser, setRooms, setRoomsLoaded]);
 
-  // 當離開訊息頁面時，刷新一次聊天室列表（獲取最新未讀數）
+  // Refresh rooms when leaving messages page
   useEffect(() => {
+    if (!currentUser) return;
     const isMessagesPage = location.pathname.startsWith('/messages');
-    
+
     if (!isMessagesPage && hasInitialLoadRef.current && !loadingRef.current) {
-      // 離開訊息頁面，刷新聊天室列表
       const refreshRooms = async () => {
         loadingRef.current = true;
         try {
           const response = await chatApi.getRooms(currentUser, 50, '');
           if (response.success && response.data) {
-            // 智能合併：優先使用 ChatList 中已清除的未讀狀態
             setRooms((prevRooms) => {
               const newRooms = response.data!;
-              
-              // 如果前端沒有數據，直接使用後端數據
-              if (prevRooms.length === 0) {
-                return newRooms;
-              }
-              
-              // 合併：如果前端的未讀數是 0，保持為 0（用戶剛標記為已讀）
+              if (prevRooms.length === 0) return newRooms;
               return newRooms.map(newRoom => {
                 const prevRoom = prevRooms.find(r => r.id === newRoom.id);
                 if (prevRoom && prevRoom.unread_count === 0 && (newRoom.unread_count || 0) > 0) {
-                  // 前端已清除，保持為 0
                   return { ...newRoom, unread_count: 0 };
                 }
                 return newRoom;
@@ -81,23 +117,39 @@ const Layout = () => {
   }, [location.pathname, currentUser, setRooms]);
 
   return (
-    <div className="layout">
-      <Navbar />
-      <div className="layout-body">
-        <Sidebar />
-        <main className="layout-main">
-          <Outlet />
-        </main>
-      </div>
-      <BottomNav />
-      
-      {/* 彈跳聊天視窗 - 像 Facebook Messenger */}
+    <AppShell>
+      {/* Sidebar — hidden on mobile (drawer provides it) */}
+      {!isMobile && <Sidebar />}
+
+      {/* Main content area */}
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          // On mobile, leave room for bottom nav
+          paddingBottom: isMobile ? 72 : 0,
+        }}
+      >
+        <Outlet />
+      </main>
+
+      {/* Mobile: drawer + bottom nav */}
+      {isMobile && (
+        <>
+          <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          <MobileBottomNav />
+        </>
+      )}
+
+      {/* Popup chat windows */}
       {openPopups.map((room, index) => (
         <ChatPopup key={room.id} room={room} index={index} />
       ))}
-    </div>
+    </AppShell>
   );
 };
 
 export default Layout;
-

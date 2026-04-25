@@ -6,7 +6,6 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { getDisplayName, getInitials } from '../../utils/formatters';
 import type { Room } from '../../types';
-import './ChatPopup.css';
 
 interface ChatPopupProps {
   room: Room;
@@ -308,6 +307,7 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
         setMessages(roomId, updatedMessages);
       }
     } catch (error) {
+      console.warn('[ChatPopup] sendMessage error:', error);
       console.error('發送訊息失敗:', error);
       alert('發送訊息失敗，請稍後再試');
     }
@@ -317,42 +317,84 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
   const avatarName = getAvatarName();
 
   return (
-    <div 
+    <div
       ref={popupRef}
-      className={`chat-popup ${isMinimized ? 'minimized' : ''}`}
-      style={{ right: `${20 + index * 340}px` }}
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        right: `${20 + index * 340}px`,
+        width: 328,
+        height: isMinimized ? 48 : 455,
+        borderRadius: '12px 12px 0 0',
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.35)',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 'var(--z-popup)' as React.CSSProperties['zIndex'],
+        transition: 'height 0.2s ease',
+        overflow: 'hidden',
+        background: 'var(--color-main-bg-2)',
+        border: '1px solid var(--color-main-border)',
+        borderBottom: 'none',
+      }}
     >
       {/* Header */}
-      <div className="popup-header" onClick={() => isMinimized && minimizeChatPopup(room.id, false)}>
-        <div className="popup-user">
-          <div className="popup-avatar">
+      <div
+        onClick={() => isMinimized && minimizeChatPopup(room.id, false)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-indigo) 100%)',
+          color: 'white',
+          minHeight: 48,
+          borderRadius: '12px 12px 0 0',
+          cursor: isMinimized ? 'pointer' : 'default',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 600, color: 'white', flexShrink: 0,
+          }}>
             {getInitials(avatarName)}
           </div>
-          <div className="popup-info">
-            <span className="popup-name">{displayName}</span>
-            <span className="popup-status">
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
+            <span style={{ fontSize: 11, opacity: 0.85 }}>
               {currentRoom.type === 'direct' ? '在線' : `${currentRoom.members?.length || 0} 位成員`}
             </span>
           </div>
         </div>
-        <div className="popup-actions">
-          <button 
-            className="popup-btn" 
-            onClick={(e) => {
-              e.stopPropagation();
-              minimizeChatPopup(room.id, !isMinimized);
-            }}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); minimizeChatPopup(room.id, !isMinimized); }}
             title={isMinimized ? '展開' : '最小化'}
+            aria-label={isMinimized ? '展開' : '最小化'}
+            style={{
+              width: 28, height: 28, border: 'none',
+              background: 'rgba(255,255,255,0.15)', color: 'white',
+              borderRadius: '50%', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+            }}
           >
             {isMinimized ? '▲' : '▼'}
           </button>
-          <button 
-            className="popup-btn popup-close" 
-            onClick={(e) => {
-              e.stopPropagation();
-              closeChatPopup(room.id);
-            }}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); closeChatPopup(room.id); }}
             title="關閉"
+            aria-label="關閉對話視窗"
+            style={{
+              width: 28, height: 28, border: 'none',
+              background: 'rgba(255,255,255,0.15)', color: 'white',
+              borderRadius: '50%', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+            }}
           >
             ✕
           </button>
@@ -362,22 +404,27 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
       {/* Body - 只在非最小化時顯示 */}
       {!isMinimized && (
         <>
-          <div className="popup-messages">
+          <div style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--color-main-bg-2)', display: 'flex', flexDirection: 'column' }}>
             {connectionError ? (
-              <div className="connection-error">
-                <div className="error-icon">⚠️</div>
-                <div className="error-title">無法連接伺服器</div>
-                <div className="error-desc">服務暫時無法使用，請稍後再試</div>
-                <button 
-                  className="retry-btn"
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-main-text)', marginBottom: 8 }}>無法連接伺服器</div>
+                <div style={{ fontSize: 13, color: 'var(--color-main-text-dim)', marginBottom: 16 }}>服務暫時無法使用，請稍後再試</div>
+                <button
+                  type="button"
                   onClick={() => {
                     setConnectionError(false);
-                    // 重新觸發 timeout
                     setTimeout(() => {
                       if (actualRoomIdRef.current.startsWith('temp_')) {
                         setConnectionError(true);
                       }
                     }, 5000);
+                  }}
+                  style={{
+                    padding: '8px 20px',
+                    background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-indigo) 100%)',
+                    color: 'white', border: 'none', borderRadius: 6,
+                    fontSize: 14, fontWeight: 500, cursor: 'pointer',
                   }}
                 >
                   重試
@@ -387,7 +434,7 @@ const ChatPopup = ({ room, index }: ChatPopupProps) => {
               <MessageList roomId={roomIdForMessages} />
             )}
           </div>
-          <div className="popup-input">
+          <div style={{ borderTop: '1px solid var(--color-main-border)', background: 'var(--color-main-bg-2)' }}>
             <MessageInput onSend={handleSendMessage} disabled={connectionError} />
           </div>
         </>

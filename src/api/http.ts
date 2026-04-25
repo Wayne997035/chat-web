@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, AxiosError } from 'axios';
+import { generateRequestId } from '../utils/requestId';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://chat-gateway-1.onrender.com/api/v1';
 
@@ -17,10 +18,11 @@ const createHttpClient = (): AxiosInstance => {
   // 請求攔截器：自動添加認證 token (未來整合 User 服務時使用)
   client.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('auth_token');
+      const token = sessionStorage.getItem('auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      config.headers['X-Request-ID'] = generateRequestId();
       return config;
     },
     (error) => {
@@ -35,9 +37,11 @@ const createHttpClient = (): AxiosInstance => {
     },
     (error: AxiosError) => {
       if (error.response?.status === 401) {
-        // 未授權：清除 token 並導向登入頁 (未來實現)
-        localStorage.removeItem('auth_token');
-        console.warn('未授權訪問，需要登入');
+        // 未授權：清除 token 並導向登入頁
+        sessionStorage.removeItem('auth_token');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       } else if (error.response?.status === 429) {
         // Rate Limiting
         console.warn('請求過於頻繁，請稍後再試');

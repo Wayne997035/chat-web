@@ -28,14 +28,15 @@ export const escapeHtml = (text: string): string => {
  * 驗證並清理用戶輸入
  */
 export const sanitizeInput = (input: string): string => {
-  // 移除 NULL 字符
-  let sanitized = input.replace(/\x00/g, '');
-  
+  // 移除 NULL 字符（使用 Unicode escape 避免 no-control-regex）
+  // eslint-disable-next-line no-control-regex -- intentional: strip null bytes and control chars
+  let sanitized = input.replace(/\u0000/g, '');
+
   // 移除控制字符（除了換行和 Tab）
-  sanitized = sanitized.replace(/[\x00-\x1F\x7F-\x9F]/g, (char) => {
+  // eslint-disable-next-line no-control-regex -- intentional: strip control characters
+  sanitized = sanitized.replace(/[\u0000-\u001F\u007F-\u009F]/g, (char) => {
     return char === '\n' || char === '\t' ? char : '';
   });
-  
+
   return sanitized.trim();
 };
-

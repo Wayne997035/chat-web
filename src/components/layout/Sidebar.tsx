@@ -1,300 +1,236 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../store/chatStore';
-import { getInitials, getAvatarColor } from '../../utils/formatters';
-import type { Room } from '../../types';
-import './Sidebar.css';
+import type { Room, Person } from '../../types';
+import { getDisplayName } from '../../utils/formatters';
+import SidebarBrand from './SidebarBrand';
+import SidebarSearchInput from './SidebarSearchInput';
+import NavItem from './NavItem';
+import RoomRow from './RoomRow';
+import PresenceItem from './PresenceItem';
+import SidebarFooter from './SidebarFooter';
 
-const Sidebar = () => {
-  const location = useLocation();
+type NavId = 'all' | 'contacts' | 'groups' | 'starred';
+
+interface SidebarProps {
+  activeRoomId?: string | null;
+  onSelectRoom?: (roomId: string) => void;
+  onOpenCreate?: () => void;
+}
+
+// Deterministic gradient colors
+const GRADIENT_PALETTE: [string, string][] = [
+  ['#2563EB', '#6366F1'],
+  ['#059669', '#0D9488'],
+  ['#D97706', '#DC2626'],
+  ['#7C3AED', '#DB2777'],
+  ['#0891B2', '#0D9488'],
+  ['#B45309', '#92400E'],
+  ['#065F46', '#0F766E'],
+];
+
+function getPersonColor(userId: string): [string, string] {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return GRADIENT_PALETTE[Math.abs(hash) % GRADIENT_PALETTE.length];
+}
+
+// Static online users list (TODO: replace with real presence API)
+const ONLINE_USER_IDS = ['user_alice', 'user_bob', 'user_charlie', 'user_david', 'user_emma', 'user_frank', 'user_grace'];
+
+const NAV_ITEMS: { id: NavId; icon: 'MessageSquare' | 'Users' | 'UserGroup' | 'Star'; label: string }[] = [
+  { id: 'all', icon: 'MessageSquare', label: '所有對話' },
+  { id: 'contacts', icon: 'Users', label: '聯絡人' },
+  { id: 'groups', icon: 'UserGroup', label: '群組' },
+  { id: 'starred', icon: 'Star', label: '重要訊息' },
+];
+
+const Sidebar = ({ activeRoomId, onSelectRoom, onOpenCreate }: SidebarProps) => {
+  const navigate = useNavigate();
   const { currentUser, rooms, roomsLoaded, openChatPopup } = useChatStore();
-  const [loadingContact, setLoadingContact] = useState<string | null>(null);
+  const [activeNav, setActiveNav] = useState<NavId>('all');
+  const [search, setSearch] = useState('');
+  const onlineUsers = useMemo((): Person[] => {
+    return ONLINE_USER_IDS
+      .filter(id => id !== currentUser)
+      .map(id => {
+        const name = getDisplayName(id);
+        return { id, name, zh: name, status: 'online' as const, color: getPersonColor(id) };
+      });
+  }, [currentUser]);
 
-  const getUserAvatar = () => {
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
-    const colorIndex = currentUser.charCodeAt(0) % colors.length;
-    return colors[colorIndex];
-  };
+  const currentUserPerson: Person = useMemo(() => {
+    const name = getDisplayName(currentUser) || currentUser;
+    return { id: currentUser, name, zh: name, status: 'online', color: getPersonColor(currentUser) };
+  }, [currentUser]);
 
-  const menuItems = [
-    { path: '/messages', icon: '', label: '所有對話' },
-    { path: '/contacts', icon: '', label: '聯絡人' },
-    { path: '/groups', icon: '', label: '我的群組' },
-    { path: '/starred', icon: '', label: '重要訊息' },
-    { path: '/archived', icon: '', label: '封存對話' },
-  ];
+  const filteredRooms = useMemo((): Room[] => {
+    let filtered = [...rooms];
 
-  const quickActions = [
-    { label: '建立群組', action: 'create-group', icon: '+' },
-    { label: '新增聯絡人', action: 'add-contact', icon: '@' },
-  ];
+    // Filter by nav
+    if (activeNav === 'groups') {
+      filtered = filtered.filter(r => r.type === 'group');
+    } else if (activeNav === 'contacts') {
+      filtered = filtered.filter(r => r.type === 'direct');
+    }
 
-  // 在線聯絡人列表
-  const onlineUsers = [
-    { id: 'user_alice', name: 'Alice', online: true },
-    { id: 'user_bob', name: 'Bob', online: true },
-    { id: 'user_charlie', name: 'Charlie', online: true },
-    { id: 'user_david', name: 'David', online: true },
-    { id: 'user_emma', name: 'Emma', online: true },
-    { id: 'user_frank', name: 'Frank', online: true },
-    { id: 'user_grace', name: 'Grace', online: true },
-  ].filter(u => u.id !== currentUser && u.online);
+    // Filter by search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(r => r.name.toLowerCase().includes(q));
+    }
 
-  // 尋找已存在的聊天室
-  const findExistingRoom = (contactId: string): Room | undefined => {
-    return rooms.find(room => {
-      if (room.type !== 'direct') return false;
-      
-      // 方法1: 通過 members 匹配
-      if (room.members && room.members.length > 0) {
-        const hasContact = room.members.some(m => m.user_id === contactId);
-        const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
-        if (hasContact && hasCurrentUser) return true;
-      }
-      
-      // 方法2: 通過 room.name 匹配（格式：user_alice_user_charlie）
-      if (room.name) {
-        const nameIncludesContact = room.name.includes(contactId);
-        const nameIncludesCurrentUser = room.name.includes(currentUser);
-        if (nameIncludesContact && nameIncludesCurrentUser) return true;
-      }
-      
-      return false;
+    // Sort by last message time descending
+    return filtered.sort((a, b) => {
+      const tA = a.last_message_time || a.created_at;
+      const tB = b.last_message_time || b.created_at;
+      return tB - tA;
     });
-  };
+  }, [rooms, activeNav, search]);
 
-  const handleStartChatWithContact = async (contactId: string) => {
-    if (contactId === currentUser || loadingContact) return;
-    
-    // 如果 rooms 已經載入完成，直接檢查
-    if (roomsLoaded) {
-      const existingRoom = findExistingRoom(contactId);
-
-      if (existingRoom) {
-        // 確保 members 字段存在
-        const roomWithMembers: Room = {
-          ...existingRoom,
-          members: existingRoom.members || [
-            { user_id: currentUser, role: 'admin' },
-            { user_id: contactId, role: 'member' },
-          ],
-        };
-        openChatPopup(roomWithMembers);
-        return;
-      }
-
-      // rooms 已載入但找不到聊天室，創建臨時聊天室
-      const tempRoom: Room = {
-        id: `temp_${contactId}`,
-        name: '',
-        type: 'direct',
-        owner_id: currentUser,
-        members: [
-          { user_id: currentUser, role: 'admin' },
-          { user_id: contactId, role: 'member' },
-        ],
-        created_at: Math.floor(Date.now() / 1000),
-        isTemporary: true,
-        targetContactId: contactId,
-      };
-      openChatPopup(tempRoom);
+  const handleSelectRoom = useCallback((roomId: string) => {
+    if (onSelectRoom) {
+      onSelectRoom(roomId);
       return;
     }
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    openChatPopup(room);
+  }, [onSelectRoom, rooms, openChatPopup]);
 
-    // rooms 還沒載入完成，等待最多 5 秒
-    setLoadingContact(contactId);
-    
-    const startTime = Date.now();
-    const maxWaitTime = 5000; // 5 秒
-
-    const checkAndOpen = () => {
-      const { rooms: latestRooms, roomsLoaded: loaded } = useChatStore.getState();
-      
-      // 如果已載入，檢查聊天室
-      if (loaded) {
-        setLoadingContact(null);
-        
-        const existingRoom = latestRooms.find(room => {
-          if (room.type !== 'direct') return false;
-          if (room.members && room.members.length > 0) {
-            const hasContact = room.members.some(m => m.user_id === contactId);
-            const hasCurrentUser = room.members.some(m => m.user_id === currentUser);
-            if (hasContact && hasCurrentUser) return true;
-          }
-          if (room.name) {
-            const nameIncludesContact = room.name.includes(contactId);
-            const nameIncludesCurrentUser = room.name.includes(currentUser);
-            if (nameIncludesContact && nameIncludesCurrentUser) return true;
-          }
-          return false;
-        });
-
-        if (existingRoom) {
-          const roomWithMembers: Room = {
-            ...existingRoom,
-            members: existingRoom.members || [
-              { user_id: currentUser, role: 'admin' },
-              { user_id: contactId, role: 'member' },
-            ],
-          };
-          openChatPopup(roomWithMembers);
-        } else {
-          // 找不到，創建臨時聊天室
-          const tempRoom: Room = {
-            id: `temp_${contactId}`,
-            name: '',
-            type: 'direct',
-            owner_id: currentUser,
-            members: [
-              { user_id: currentUser, role: 'admin' },
-              { user_id: contactId, role: 'member' },
-            ],
-            created_at: Math.floor(Date.now() / 1000),
-            isTemporary: true,
-            targetContactId: contactId,
-          };
-          openChatPopup(tempRoom);
-        }
+  const handlePresenceClick = useCallback((person: Person) => {
+    if (person.id === currentUser) return;
+    if (roomsLoaded) {
+      const existingRoom = rooms.find(r => {
+        if (r.type !== 'direct') return false;
+        if (r.members?.some(m => m.user_id === person.id) && r.members?.some(m => m.user_id === currentUser)) return true;
+        if (r.name?.includes(person.id) && r.name?.includes(currentUser)) return true;
+        return false;
+      });
+      if (existingRoom) {
+        openChatPopup({ ...existingRoom, members: existingRoom.members || [{ user_id: currentUser, role: 'admin' }, { user_id: person.id, role: 'member' }] });
         return;
       }
-
-      // 檢查是否超時
-      if (Date.now() - startTime >= maxWaitTime) {
-        setLoadingContact(null);
-        // 超時，打開臨時聊天室並標記為需要顯示錯誤
-        const tempRoom: Room = {
-          id: `temp_${contactId}`,
-          name: '',
-          type: 'direct',
-          owner_id: currentUser,
-          members: [
-            { user_id: currentUser, role: 'admin' },
-            { user_id: contactId, role: 'member' },
-          ],
-          created_at: Math.floor(Date.now() / 1000),
-          isTemporary: true,
-          targetContactId: contactId,
-          connectionTimeout: true, // 標記為連線超時
-        };
-        openChatPopup(tempRoom);
-        return;
-      }
-
-      // 繼續等待
-      setTimeout(checkAndOpen, 100);
-    };
-
-    checkAndOpen();
-  };
-
-  const isActive = (path: string, exact = false) => {
-    if (exact) {
-      return location.pathname === path;
     }
-    return location.pathname.startsWith(path);
-  };
+    const tempRoom: Room = {
+      id: `temp_${person.id}`,
+      name: '',
+      type: 'direct',
+      owner_id: currentUser,
+      members: [{ user_id: currentUser, role: 'admin' }, { user_id: person.id, role: 'member' }],
+      created_at: Math.floor(Date.now() / 1000),
+      isTemporary: true,
+      targetContactId: person.id,
+    };
+    openChatPopup(tempRoom);
+  }, [currentUser, rooms, roomsLoaded, openChatPopup]);
+
+  const handleOpenSettings = useCallback(() => {
+    navigate('/settings');
+  }, [navigate]);
 
   return (
-    <aside className="sidebar-left">
-      <div className="sidebar-content">
-        {/* 用戶資料 */}
-        <Link 
-          to="/profile" 
-          className={`sidebar-item user-profile ${isActive('/profile') ? 'active' : ''}`}
-        >
-          <div 
-            className="sidebar-avatar"
-            style={{ backgroundColor: getUserAvatar() }}
-          >
-            {currentUser.charAt(0).toUpperCase()}
+    <aside
+      aria-label="對話側欄"
+      style={{
+        width: 'var(--sidebar-w)',
+        height: '100%',
+        background: 'var(--color-sb-bg)',
+        borderRight: '1px solid var(--color-sb-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Brand */}
+      <SidebarBrand onOpenCreate={onOpenCreate ?? (() => {})} />
+
+      {/* Search */}
+      <SidebarSearchInput value={search} onChange={setSearch} />
+
+      {/* Nav */}
+      <div style={{ padding: '8px 8px 0 8px', flexShrink: 0 }}>
+        {NAV_ITEMS.map(n => (
+          <NavItem
+            key={n.id}
+            icon={n.icon}
+            label={n.label}
+            active={activeNav === n.id}
+            onClick={() => setActiveNav(n.id)}
+          />
+        ))}
+      </div>
+
+      {/* Section label + room list */}
+      <div style={{
+        padding: '14px 16px 6px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: '0.04em',
+        color: 'var(--color-sb-text-dim)',
+        textTransform: 'uppercase',
+        flexShrink: 0,
+      }}>
+        <span>對話</span>
+        <span style={{ textTransform: 'none', fontSize: 11 }}>{filteredRooms.length}</span>
+      </div>
+
+      {/* Scrollable room list + presence */}
+      <div
+        className="sb-scroll"
+        style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingBottom: 8 }}
+      >
+        {filteredRooms.length === 0 && search && (
+          <div style={{ padding: '24px 20px', color: 'var(--color-sb-text-dim)', fontSize: 12.5, textAlign: 'center' }}>
+            找不到符合「{search}」的對話
           </div>
-          <div className="user-info">
-            <span className="sidebar-label">{currentUser}</span>
-            <span className="user-status">在線上</span>
-          </div>
-        </Link>
+        )}
 
-        <div className="sidebar-divider"></div>
+        {filteredRooms.map(room => (
+          <RoomRow
+            key={room.id}
+            room={room}
+            active={room.id === (activeRoomId ?? null)}
+            onClick={() => handleSelectRoom(room.id)}
+            currentUser={currentUser}
+          />
+        ))}
 
-        {/* 主選單 */}
-        <div className="sidebar-section">
-          <div className="sidebar-section-header">選單</div>
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
-            >
-              <span className="sidebar-label">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-
-        <div className="sidebar-divider"></div>
-
-        {/* 快速操作 */}
-        <div className="sidebar-section">
-          <div className="sidebar-section-header">快速操作</div>
-          <div className="quick-actions-grid">
-            {quickActions.map((action) => (
-              <button
-                key={action.action}
-                className="quick-action-card"
-                onClick={() => {/* TODO: 實作快速操作功能 */}}
-              >
-                <div className="quick-action-icon">{action.icon}</div>
-                <span className="quick-action-label">{action.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="sidebar-divider"></div>
-
-        {/* 在線聯絡人列表 */}
+        {/* Online presence section */}
         {onlineUsers.length > 0 && (
-          <div className="sidebar-section">
-            <div className="sidebar-section-header">
-              <span className="online-indicator"></span>
-              在線上 ({onlineUsers.length})
+          <>
+            <div style={{
+              padding: '14px 16px 6px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: '0.04em',
+              color: 'var(--color-sb-text-dim)',
+              textTransform: 'uppercase',
+            }}>
+              <span>在線上 ({onlineUsers.length})</span>
             </div>
-            <div className="online-contacts-list-sidebar">
-              {onlineUsers.map(contact => {
-                const avatarColor = getAvatarColor(contact.id);
-                const isLoading = loadingContact === contact.id;
-                return (
-                  <div
-                    key={contact.id}
-                    className={`online-contact-item-sidebar ${isLoading ? 'loading' : ''}`}
-                    onClick={() => handleStartChatWithContact(contact.id)}
-                  >
-                    <div 
-                      className="contact-avatar-small online"
-                      style={{ backgroundColor: avatarColor }}
-                    >
-                      {isLoading ? '...' : getInitials(contact.name)}
-                    </div>
-                    <span className="contact-name-small">
-                      {isLoading ? '連線中...' : contact.name}
-                    </span>
-                  </div>
-                );
-              })}
+            <div style={{ padding: '2px 8px 10px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {onlineUsers.map(p => (
+                <PresenceItem key={p.id} person={p} onClick={() => handlePresenceClick(p)} />
+              ))}
             </div>
-          </div>
+          </>
         )}
       </div>
 
-      {/* 底部資訊 */}
-      <div className="sidebar-footer">
-        <a href="#" className="footer-link">隱私權</a>
-        <span>·</span>
-        <a href="#" className="footer-link">條款</a>
-        <div className="footer-copy">Cover Ones © 2025</div>
-      </div>
+      {/* Footer */}
+      <SidebarFooter currentUser={currentUserPerson} onOpenSettings={handleOpenSettings} />
     </aside>
   );
 };
 
 export default Sidebar;
-

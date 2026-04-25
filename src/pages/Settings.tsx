@@ -2,7 +2,8 @@ import { useTheme } from '../hooks/useTheme';
 import './Settings.css';
 
 const Settings = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { config, togglePanel } = useTheme();
+  const theme = config.panel;
 
   return (
     <div className="settings-page">
@@ -23,7 +24,7 @@ const Settings = () => {
                 className={`theme-option ${theme === 'light' ? 'active' : ''}`}
                 onClick={() => {
                   if (theme === 'dark') {
-                    toggleTheme();
+                    togglePanel();
                   }
                 }}
               >
@@ -41,7 +42,7 @@ const Settings = () => {
                 className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
                 onClick={() => {
                   if (theme === 'light') {
-                    toggleTheme();
+                    togglePanel();
                   }
                 }}
               >

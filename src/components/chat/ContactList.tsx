@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { getInitials, getAvatarColor } from '../../utils/formatters';
 import type { Room } from '../../types';
-import './ContactList.css';
 
 const users = [
   { id: 'user_alice', name: 'Alice', online: true },
@@ -155,27 +154,63 @@ const ContactList = () => {
   const availableContacts = users.filter(u => u.id !== currentUser);
 
   return (
-    <div className="contacts-section">
-      <h4>聯絡人</h4>
-      <div className="contacts-list">
+    <div style={{ marginBottom: 8 }}>
+      <h4 style={{ margin: 0, padding: '12px 20px 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-main-text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>聯絡人</h4>
+      <div>
         {availableContacts.map(contact => {
           const avatarColor = getAvatarColor(contact.id);
           const isLoading = loading === contact.id;
           return (
             <div
               key={contact.id}
-              className={`contact-item ${isLoading ? 'loading' : ''}`}
               onClick={() => handleStartChat(contact.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '10px 16px',
+                cursor: 'pointer',
+                opacity: isLoading ? 0.6 : 1,
+                pointerEvents: isLoading ? 'none' : 'auto',
+                transition: 'background 150ms ease',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-main-border)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <div 
-                className={`contact-avatar ${contact.online ? 'online' : ''}`}
-                style={{ backgroundColor: avatarColor }}
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  backgroundColor: avatarColor,
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 600,
+                  fontSize: 20,
+                  marginRight: 12,
+                  flexShrink: 0,
+                  position: 'relative',
+                }}
               >
                 {getInitials(contact.name)}
+                {contact.online && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    width: 12,
+                    height: 12,
+                    background: 'var(--color-green)',
+                    border: '2px solid var(--color-main-bg)',
+                    borderRadius: '50%',
+                  }} />
+                )}
               </div>
-              <div className="contact-info">
-                <div className="contact-name">{contact.name}</div>
-                <div className="contact-status">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, fontSize: 15, color: 'var(--color-main-text)', marginBottom: 2 }}>{contact.name}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-main-text-dim)' }}>
                   {isLoading ? '連線中...' : (contact.online ? '在線上' : '離線')}
                 </div>
               </div>
