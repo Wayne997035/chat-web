@@ -3,6 +3,8 @@ import { useNextTask } from '../../hooks/useNextTask';
 
 type PriorityLevel = 'high' | 'medium' | 'low';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; bg: string; border: string; color: string }> = {
   high: {
     label: 'P1 高優先',
@@ -24,9 +26,10 @@ const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; bg: string; border
   },
 };
 
-function numericPriorityLevel(p: number | null): PriorityLevel {
+function numericPriorityLevel(p: number | null): PriorityLevel | null {
   if (p === 1) return 'high';
   if (p === 2) return 'medium';
+  if (p === null) return null;
   return 'low';
 }
 
@@ -35,8 +38,8 @@ export function NextTaskCard() {
   const { data, isLoading, isError } = useNextTask();
 
   const handleClick = () => {
-    if (data?.task) {
-      navigate(`/gtd?task_id=${data.task.id}`);
+    if (data?.task && UUID_RE.test(data.task.id)) {
+      navigate(`/gtd?task_id=${encodeURIComponent(data.task.id)}`);
     }
   };
 
@@ -98,7 +101,8 @@ export function NextTaskCard() {
   }
 
   const task = data?.task ?? null;
-  const priorityCfg = task ? PRIORITY_CONFIG[numericPriorityLevel(task.priority)] : null;
+  const priorityLevel = task ? numericPriorityLevel(task.priority) : null;
+  const priorityCfg = priorityLevel ? PRIORITY_CONFIG[priorityLevel] : null;
 
   // No task placeholder
   if (!task) {

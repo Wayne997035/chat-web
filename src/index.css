@@ -199,6 +199,11 @@ body {
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* ===== Typing indicator dot ===== */
 .typing-dot {
   width: 6px;

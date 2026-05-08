@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import http from '../lib/api/http';
+import wbtHttp from '../lib/api/wbt';
 
 export interface Task {
   id: string;
@@ -15,7 +15,7 @@ interface NextTaskResponse {
 }
 
 async function fetchNextTask(): Promise<NextTaskResponse> {
-  const response = await http.get<NextTaskResponse>('/dashboard/next-task');
+  const response = await wbtHttp.get<NextTaskResponse>('/dashboard/next-task');
   return response.data;
 }
 

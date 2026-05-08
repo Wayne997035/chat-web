@@ -34,6 +34,7 @@ function App() {
           <Route path="archived" element={<div className="placeholder-page">封存對話（開發中）</div>} />
           <Route path="profile" element={<div className="placeholder-page">個人資料頁面（開發中）</div>} />
           <Route path="settings" element={<Settings />} />
+          <Route path="gtd" element={<div className="placeholder-page">GTD（開發中）</div>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
