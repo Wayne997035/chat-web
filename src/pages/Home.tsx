@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chatStore';
 import { getDisplayName, getInitials, formatMessagePreview, formatMessageTime } from '../utils/formatters';
 import type { Room } from '../types';
+import { NextTaskCard } from '../components/dashboard/NextTaskCard';
 
 // Deterministic gradient colors for avatars
 const GRADIENT_PALETTE: [string, string][] = [
@@ -590,6 +591,9 @@ const Home = () => {
 
         {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Next GTD Task */}
+          <NextTaskCard />
 
           {/* Stats panel */}
           <div style={PANEL_STYLE}>

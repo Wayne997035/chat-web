@@ -18,7 +18,7 @@ const createHttpClient = (): AxiosInstance => {
   // 請求攔截器：自動添加認證 token (未來整合 User 服務時使用)
   client.interceptors.request.use(
     (config) => {
-      const token = sessionStorage.getItem('auth_token');
+      const token = sessionStorage.getItem('chatapp_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -38,7 +38,7 @@ const createHttpClient = (): AxiosInstance => {
     (error: AxiosError) => {
       if (error.response?.status === 401) {
         // 未授權：清除 token 並導向登入頁
-        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('chatapp_token');
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
